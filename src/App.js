@@ -1,3 +1,4 @@
+import { useCallback, useRef } from "react";
 import "./styles.css";
 
 let isLoading = false;
@@ -45,6 +46,21 @@ async function extractFrame(file) {
 }
 
 export default function App() {
+  const cursorDivRef = useRef();
+
+  const onMouseMove = useCallback((e) => {
+    const video = document.querySelector("#video");
+    if (isLoading || !video.duration) {
+      return;
+    }
+    isLoading = true;
+    const rect = e.target.getBoundingClientRect();
+    const cursorPosition = e.clientX - rect.x;
+    const percentage = cursorPosition / rect.width;
+    cursorDivRef.current.style.transform = `translateX(${cursorPosition}px)`;
+    video.currentTime = video.duration * percentage;
+  }, []);
+
   return (
     <div className="App">
       <h1>Video Editor</h1>
@@ -61,24 +77,27 @@ export default function App() {
         />
       </p>
       <p>
-        <div
-          style={{
-            display: "inline-block",
-            width: 600,
-            height: 20,
-            backgroundColor: "purple"
-          }}
-          onMouseMove={(e) => {
-            const video = document.querySelector("#video");
-            if (isLoading || !video.duration) {
-              return;
-            }
-            isLoading = true;
-            const rect = e.target.getBoundingClientRect();
-            const percentage = (e.clientX - rect.x) / rect.width;
-            video.currentTime = video.duration * percentage;
-          }}
-        />
+        <div>
+          <div
+            ref={cursorDivRef}
+            style={{
+              display: "inline-block",
+              width: 4,
+              height: 20,
+              backgroundColor: "green",
+              position: "absolute"
+            }}
+          />
+          <div
+            style={{
+              display: "inline-block",
+              width: 600,
+              height: 20,
+              backgroundColor: "purple"
+            }}
+            onMouseMove={onMouseMove}
+          ></div>
+        </div>
       </p>
       <p>
         <canvas id="canvas" width="600" height="400" />
@@ -97,3 +116,4 @@ export default function App() {
     </div>
   );
 }
+
