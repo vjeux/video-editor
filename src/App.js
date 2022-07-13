@@ -1,5 +1,5 @@
 import { useCallback, useRef } from "react";
-import { get, set } from 'idb-keyval';
+import { set } from 'idb-keyval';
 
 import "./styles.css";
 
@@ -66,10 +66,6 @@ export default function App() {
 
   const handleFileOpen = async () => {
     try {
-      const file = await get('file');
-      if (file) {
-        return await extractFrame(file);
-      }
       const [fileHandle] = await window.showOpenFilePicker();
       const actualFile = await fileHandle.getFile();
       await set('file', actualFile);
