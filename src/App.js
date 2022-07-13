@@ -67,9 +67,9 @@ export default function App() {
   const handleFileOpen = async () => {
     try {
       const [fileHandle] = await window.showOpenFilePicker();
-      const actualFile = await fileHandle.getFile();
-      await set('file', actualFile);
-      await extractFrame(actualFile);
+      const file = await fileHandle.getFile();
+      await set('file', file);
+      await extractFrame(file);
     } catch (e) {}
   }
 
