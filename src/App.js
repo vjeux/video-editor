@@ -1,4 +1,6 @@
 import { useCallback, useRef } from "react";
+import { get, set } from 'idb-keyval';
+
 import "./styles.css";
 
 let isLoading = false;
@@ -49,6 +51,7 @@ export default function App() {
   const cursorDivRef = useRef();
 
   const onMouseMove = useCallback((e) => {
+
     const video = document.querySelector("#video");
     if (isLoading || !video.duration) {
       return;
@@ -61,55 +64,36 @@ export default function App() {
     video.currentTime = video.duration * percentage;
   }, []);
 
+  const handleFileOpen = async () => {
+    try {
+      const file = await get('file');
+      if (file) {
+        return await extractFrame(file);
+      }
+      const [fileHandle] = await window.showOpenFilePicker();
+      const actualFile = await fileHandle.getFile();
+      await set('file', actualFile);
+      await extractFrame(actualFile);
+    } catch (e) {}
+  }
+
   return (
     <div className="App">
       <h1>Video Editor</h1>
-      <p>
+      <button onClick={handleFileOpen}>
         Select a video:{" "}
-        <input
-          type="file"
-          onChange={(e) => {
-            if (!e.target.files[0]) {
-              return;
-            }
-            extractFrame(e.target.files[0]).then();
-          }}
-        />
-      </p>
+      </button>
       <p>
         <div>
-          <div
-            ref={cursorDivRef}
-            style={{
-              display: "inline-block",
-              width: 4,
-              height: 20,
-              backgroundColor: "green",
-              position: "absolute"
-            }}
-          />
-          <div
-            style={{
-              display: "inline-block",
-              width: 600,
-              height: 20,
-              backgroundColor: "purple"
-            }}
-            onMouseMove={onMouseMove}
-          ></div>
+          <div ref={cursorDivRef} style={{ display: "inline-block", width: 4, height: 20, backgroundColor: "green", position: "absolute"}} />
+          <div style={{ display: "inline-block", width: 600, height: 20, backgroundColor: "purple"}} onMouseMove={onMouseMove} />
         </div>
       </p>
       <p>
         <canvas id="canvas" width="600" height="400" />
       </p>
       <p>
-        <video
-          width="600"
-          height="400"
-          id="video"
-          controls
-          style={{ display: "none" }}
-        >
+        <video width="600" height="400" id="video" controls style={{ display: "none" }}>
           <source id="source" />
         </video>
       </p>
