@@ -2,3 +2,18 @@
   font-family: sans-serif;
   text-align: center;
 }
+
+.cursor {
+  display: inline-block;
+  width: 4px;
+  height: 20px;
+  background-color: green;
+  position: absolute;
+}
+
+.scrubble {
+  display: inline-block;
+  width: 600px;
+  height: 20px;
+  background-color: purple;
+}
