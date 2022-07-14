@@ -1,10 +1,12 @@
 import { get } from "idb-keyval";
-import { useCallback } from "react";
-import { loadingStateAtom } from "../atoms";
-import { useRecoilValue } from "recoil";
+import { useCallback, useEffect } from "react";
+import { loadingStateAtom, durationStateAtom } from "../atoms";
+import { useRecoilValue, useRecoilState } from "recoil";
+import Excalidraw from "./Excalidraw";
 
 export const Video = () => {
   const loadingState = useRecoilValue(loadingStateAtom);
+  const [, setDurarionState] = useRecoilState(durationStateAtom);
 
   const onVideoLoad = useCallback(
     async (video) => {
@@ -31,7 +33,7 @@ export const Video = () => {
           }
           const frame = result.value;
 
-          const canvas = document.querySelector("#canvas");
+          const [canvas] = document.getElementsByTagName("canvas");
           const context = canvas.getContext("2d");
           context.drawImage(
             frame,
@@ -53,7 +55,7 @@ export const Video = () => {
 
   return (
     <div>
-      <canvas id="canvas" width="600" height="400" />
+      <Excalidraw id="canvas" width="600" height="400" />
       <video
         ref={onVideoLoad}
         width="600"
