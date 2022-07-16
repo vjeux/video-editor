@@ -1,7 +1,7 @@
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { set } from "idb-keyval";
 import { loadingStateAtom, durationStateAtom } from "./atoms";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState } from "recoil";
 import { Video } from "./components/Video";
 import "./styles.css";
 import { Timeline } from "./components/Timeline";
@@ -34,17 +34,8 @@ const App = () => {
     <div className="App">
       <h1>Video Editor</h1>
       <button onClick={handleFileOpen}>Select a video</button>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          height: "100%",
-          justifyContent: "center",
-          alignItems: "center",
-          overflow: "scroll",
-        }}
-      >
-        <Video />
+      <Video />
+      <div style={{ width: 800, height: 150 }}>
         <Timeline duration={videoDuration} />
       </div>
     </div>

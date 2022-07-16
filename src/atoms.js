@@ -1,4 +1,4 @@
-import { atom } from "recoil";
+import { atom, atomFamily, selectorFamily } from "recoil";
 
 export const loadingStateAtom = atom({
   key: "loadingState",
@@ -10,7 +10,12 @@ export const durationStateAtom = atom({
   default: 0,
 });
 
-export const rangeStateAtom = atom({
+export const rangeStateAtom = atomFamily({
   key: "rangeStateAtom",
-  default: [],
+  default: selectorFamily({
+    key: "rangeStateAtom/Default",
+    get: (data) => () => {
+      return data;
+    },
+  }),
 });

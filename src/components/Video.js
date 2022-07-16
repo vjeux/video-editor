@@ -1,12 +1,11 @@
 import { get } from "idb-keyval";
-import { useCallback, useEffect } from "react";
-import { loadingStateAtom, durationStateAtom } from "../atoms";
-import { useRecoilValue, useRecoilState } from "recoil";
-import Excalidraw from "./Excalidraw";
+import { useCallback } from "react";
+import { loadingStateAtom } from "../atoms";
+import { useRecoilValue } from "recoil";
+import { Excalidraw } from "./Excalidraw";
 
 export const Video = () => {
   const loadingState = useRecoilValue(loadingStateAtom);
-  const [, setDurarionState] = useRecoilState(durationStateAtom);
 
   const onVideoLoad = useCallback(
     async (video) => {

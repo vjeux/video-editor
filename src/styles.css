@@ -6,6 +6,11 @@ body {
   font-family: sans-serif;
   text-align: center;
   width: 100vw;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  /* overflow: hidden; */
 }
 
 .cursor {
