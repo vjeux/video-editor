@@ -19,3 +19,8 @@ export const rangeStateAtom = atomFamily({
     },
   }),
 });
+
+export const cursorPositionStateAtom = atom({
+  key: "cursorPositionStateAtom",
+  default: 0,
+});

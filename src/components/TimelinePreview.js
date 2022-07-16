@@ -5,6 +5,7 @@ import { getSeconds } from "../utils";
 export const TimelinePreview = ({ data, index, style }) => {
   const canvasRef = useRef();
   const imgRef = useRef();
+  const ref = useRef();
   const range = data[index];
   const tempo = getSeconds(range);
 
@@ -27,6 +28,17 @@ export const TimelinePreview = ({ data, index, style }) => {
     };
   }, [tempo]);
 
+  const onMouseMove = useCallback(() => {
+    const video = document.querySelector("#video");
+    video.currentTime = tempo;
+  }, [tempo]);
+
+  useEffect(() => {
+    const div = ref.current;
+    div.addEventListener("mousemove", onMouseMove);
+    return () => div.removeEventListener("mousemove", onMouseMove);
+  }, [onMouseMove]);
+
   useEffect(() => {
     // setFrame().then();
   }, []);
@@ -43,6 +55,7 @@ export const TimelinePreview = ({ data, index, style }) => {
         alignItems: "center",
         ...style,
       }}
+      ref={ref}
     >
       {/* <canvas
         ref={canvasRef}

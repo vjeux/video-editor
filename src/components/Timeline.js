@@ -1,7 +1,7 @@
-import { rangeStateAtom } from "../atoms";
+import { cursorPositionStateAtom, rangeStateAtom } from "../atoms";
 import { useCallback, useEffect, useRef } from "react";
 
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 
 import { TimelinePreview } from "./TimelinePreview";
 import { generateRange } from "../utils";
@@ -14,15 +14,20 @@ export const Timeline = ({ duration }) => {
   const cursorDivRef = useRef();
   const timelineDivRef = useRef();
   const range = useRecoilValue(rangeStateAtom([...generateRange(duration)]));
+  const [, setCursorPosition] = useRecoilState(cursorPositionStateAtom);
 
-  const onMouseMove = useCallback((e) => {
-    const video = document.querySelector("#video");
-    const rect = timelineDivRef.current.getBoundingClientRect();
-    const cursorPosition = e.clientX - rect.x;
-    cursorDivRef.current.style.transform = `translateX(${cursorPosition}px)`;
-    const percentage = cursorPosition / rect.width;
-    video.currentTime = video.duration * percentage;
-  }, []);
+  const onMouseMove = useCallback(
+    (e) => {
+      const video = document.querySelector("#video");
+      const rect = timelineDivRef.current.getBoundingClientRect();
+      const cursorPosition = e.clientX - rect.x;
+      cursorDivRef.current.style.transform = `translateX(${cursorPosition}px)`;
+      const percentage = cursorPosition / rect.width;
+      // video.currentTime = video.duration * percentage;
+      setCursorPosition(cursorPosition);
+    },
+    [setCursorPosition]
+  );
 
   useEffect(() => {
     const listElement = document.querySelector(".list");
