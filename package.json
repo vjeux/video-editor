@@ -8,16 +8,23 @@
   ],
   "main": "src/index.js",
   "dependencies": {
+    "@excalidraw/excalidraw": "^0.12.0",
+    "idb-keyval": "^6.2.0",
     "react": "18.0.0",
     "react-dom": "18.0.0",
     "react-scripts": "^5.0.1"
   },
   "devDependencies": {
     "@babel/runtime": "7.13.8",
+    "@excalidraw/eslint-config": "^1.0.3",
+    "@excalidraw/prettier-config": "^1.0.2",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "prettier": "^2.7.1",
     "typescript": "4.1.3"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "react-scripts --openssl-legacy-provider start",
     "build": "react-scripts build",
     "test": "react-scripts test --env=jsdom",
     "eject": "react-scripts eject"

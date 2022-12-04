@@ -1,4 +1,10 @@
+import { useCallback } from "react";
+import { set } from "idb-keyval";
+import { loadingStateAtom, durationStateAtom } from "./atoms";
+import { useRecoilState } from "recoil";
+import { Video } from "./components/Video";
 import "./styles.css";
+import { Timeline } from "./components/Timeline";
 
 import { useState, useEffect, useRef } from 'react';
 
@@ -221,4 +227,6 @@ export default function App({worker}) {
       </div>
     </div>
   );
-}
+};
+
+export default App;

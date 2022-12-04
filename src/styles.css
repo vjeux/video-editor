@@ -1,4 +1,22 @@
+body {
+  background-color: rgb(13, 17, 23);
+}
+
 .App {
   font-family: sans-serif;
   text-align: center;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  /* overflow: hidden; */
+}
+
+.cursor {
+  display: inline-block;
+  width: 4px;
+  height: 140px;
+  background-color: green;
+  position: absolute;
 }

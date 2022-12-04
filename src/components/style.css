@@ -1,0 +1,13 @@
+body {
+  padding: 0;
+  margin: 0;
+}
+
+.excalidraw-wrapper {
+  width: 1200px;
+  height: 500px;
+}
+
+.excalidraw .App-menu_top .Stack_vertical .Island {
+  min-width: 204px;
+}
