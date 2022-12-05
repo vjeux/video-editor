@@ -7,6 +7,8 @@ import "./styles.css";
 import { Timeline } from "./components/Timeline";
 
 import { useState, useEffect, useRef } from 'react';
+import loadMP4Module from "./mp4.js";
+
 
 function createVideoFile(file) {
   const videoElement = document.createElement('video');
@@ -41,6 +43,17 @@ function getRandomColor() {
   return randomColor;
 }
 
+function getReaderFromVideoElement(videoElement) {
+  const stream = videoElement.captureStream();
+  const tracks = stream.getVideoTracks();
+  const track = tracks[0];
+  if (!track) {
+  return null;
+  }
+  const trackProcessor = new window.MediaStreamTrackProcessor(track);
+  return trackProcessor.readable.getReader();
+}
+
 async function extractFrameFromVideoFile(videoFile, time, targetCanvas) {
   await new Promise((resolve) => {
     const videoElement = videoFile.videoElement;
@@ -48,15 +61,11 @@ async function extractFrameFromVideoFile(videoFile, time, targetCanvas) {
     const listener = async function() {
       videoElement.removeEventListener('timeupdate', listener);
 
-      const stream = videoElement.captureStream();
-      const tracks = stream.getTracks();
-      const track = tracks.find((track) => track.kind === "video");
-      if (!track) {
+      const reader = getReaderFromVideoElement(videoElement);
+      if (!reader) {
         return;
       }
-      const trackProcessor = new window.MediaStreamTrackProcessor(track);
 
-      const reader = trackProcessor.readable.getReader();
       const result = await reader.read();
       if (result.done) {
         return;
@@ -137,7 +146,7 @@ function Preview({clip, time}) {
   const canvasElement = useRef(null);
 
   useEffect(() => {
-    PromiseQueue.enqueue(() => extractFrameFromVideoFile(clip.videoFile, time, canvasElement.current));
+//    PromiseQueue.enqueue(() => extractFrameFromVideoFile(clip.videoFile, time, canvasElement.current));
   }, [clip, time]);
 
   return (
@@ -148,6 +157,58 @@ function Preview({clip, time}) {
       style={{width: 70, height: 40, display: 'inline-block'}}
     />
   );
+}
+
+async function record(videoElement) {  
+  const reader = getReaderFromVideoElement(videoElement);
+  if (!reader) {
+    return;
+  }
+
+  const width = 1920;
+  const height = 1080;
+  const fps = 30;
+  const MP4 = await loadMP4Module();
+  const encoder = MP4.createWebCodecsEncoder({
+    width,
+    height,
+    fps
+  });
+  const duration = videoElement.duration;
+  console.log(videoElement.duration);
+
+  let currentTime = 0;
+  let frameCount = 0;
+
+  const listener = async () => {
+    reader.read().then(async (frame) => {
+      if (frame.value) {
+        const bitmap = await createImageBitmap(frame.value);
+        await encoder.addFrame(bitmap);
+        frameCount++;
+
+        if (frameCount % 10 === 0) {
+          console.log("Encoding " + Math.round(100 * currentTime / duration) + "%");
+        }
+        frame.value.close();
+      }
+      if (currentTime < duration) {
+        currentTime += 1/fps;
+        videoElement.currentTime = currentTime;
+      } else {
+        videoElement.removeEventListener('timeupdate', listener);
+        const data = await encoder.end();
+        const url = URL.createObjectURL(new Blob([data], { type: "video/mp4" }));
+
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = "download.mp4";
+        anchor.click();
+      }
+    });
+  }
+  videoElement.addEventListener('timeupdate', listener);
+  videoElement.currentTime = currentTime;
 }
 
 export default function App({worker}) {
@@ -224,6 +285,16 @@ export default function App({worker}) {
             })}
           </div>
         )}
+      </div>
+
+      <div>
+        <button
+          onClick={async () => {
+            await record(tracks[0].clips[0].videoFile.videoElement)
+          }}
+        >
+          Generate video
+        </button>
       </div>
     </div>
   );
