@@ -179,6 +179,7 @@ async function record(videoElement) {
 
   let currentTime = 0;
   let frameCount = 0;
+  const startNow = performance.now();
 
   const listener = async () => {
     reader.read().then(async (frame) => {
@@ -188,7 +189,7 @@ async function record(videoElement) {
         frameCount++;
 
         if (frameCount % 10 === 0) {
-          console.log("Encoding " + Math.round(100 * currentTime / duration) + "%");
+          console.log("Encoding " + Math.round(100 * currentTime / duration) + "% " + Math.round(1000 * frameCount / (performance.now() - startNow)) + " fps");
         }
         frame.value.close();
       }
