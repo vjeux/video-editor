@@ -1,7 +1,7 @@
 // https://unpkg.com/mp4-wasm@1.0.6/build/mp4.js
 // With the path to the wasm file changed. Search for CHANGED
 
-var Pr = (function () {
+var Module = (function () {
     var _ = import.meta.url;
     return function (t) {
       t = t || {};
@@ -24,7 +24,7 @@ var Pr = (function () {
           );
         }),
         (t.createWebCodecsEncoder = function (n) {
-          return Kr(t, n);
+          return createWebCodecsEncoderWithModule(t, n);
         });
       var m = {},
         l;
@@ -1318,234 +1318,302 @@ return ret;
           t.preInit.pop()();
       return Fr(), t.ready;
     };
-  })(),
-  _e = Pr,
-  Ur = new Uint8Array([0, 0, 0, 1]);
-function he(_) {
-  console.error(_);
+  })();
+
+/* post code */
+const START_CODE = new Uint8Array([0, 0, 0, 1]);
+
+function defaultError(error) {
+  console.error(error);
 }
-Pr.createFile = Rr;
-function Rr(_ = 256) {
-  let t = 0,
-    u = 0,
-    h = new Uint8Array(_);
+
+Module.createFile = createFile;
+export function createFile(initialCapacity = 256) {
+  let cursor = 0;
+  let usedBytes = 0;
+  let contents = new Uint8Array(initialCapacity);
   return {
     contents: function () {
-      return h.slice(0, u);
+      return contents.slice(0, usedBytes);
     },
-    seek: function (l) {
-      t = l;
+    seek: function (offset) {
+      // offset in bytes
+      cursor = offset;
     },
-    write: function (l) {
-      let p = l.byteLength;
-      return m(t + p), h.set(l, t), (t += p), (u = Math.max(u, t)), p;
+    write: function (data) {
+      const size = data.byteLength;
+      expand(cursor + size);
+      contents.set(data, cursor);
+      cursor += size;
+      usedBytes = Math.max(usedBytes, cursor);
+      return size;
     },
   };
-  function m(l) {
-    var p = h.length;
-    if (p >= l) return;
-    var j = 1024 * 1024;
-    (l = Math.max(l, (p * (p < j ? 2 : 1.125)) >>> 0)),
-      p != 0 && (l = Math.max(l, 256));
-    let N = h;
-    (h = new Uint8Array(l)), u > 0 && h.set(N.subarray(0, u), 0);
+
+  function expand(newCapacity) {
+    var prevCapacity = contents.length;
+    if (prevCapacity >= newCapacity) return; // No need to expand, the storage was already large enough.
+    // Don't expand strictly to the given requested limit if it's only a very small increase, but instead geometrically grow capacity.
+    // For small filesizes (<1MB), perform size*2 geometric increase, but for large sizes, do a much more conservative size*1.125 increase to
+    // avoid overshooting the allocation cap by a very large margin.
+    var CAPACITY_DOUBLING_MAX = 1024 * 1024;
+    newCapacity = Math.max(
+      newCapacity,
+      (prevCapacity * (prevCapacity < CAPACITY_DOUBLING_MAX ? 2.0 : 1.125)) >>>
+        0
+    );
+    if (prevCapacity != 0) newCapacity = Math.max(newCapacity, 256); // At minimum allocate 256b for each file when expanding.
+    const oldContents = contents;
+    contents = new Uint8Array(newCapacity); // Allocate new storage.
+    if (usedBytes > 0) contents.set(oldContents.subarray(0, usedBytes), 0);
   }
 }
-Pr.isWebCodecsSupported = Sr;
-function Sr() {
+
+Module.isWebCodecsSupported = isWebCodecsSupported;
+export function isWebCodecsSupported() {
   return (
-    typeof window != "undefined" && typeof window.VideoEncoder == "function"
+    typeof window !== "undefined" && typeof window.VideoEncoder === "function"
   );
 }
-function Kr(_, t = {}) {
-  let {
-    width: u,
-    height: h,
-    groupOfPictures: m = 20,
-    fps: l = 30,
-    fragmentation: p = !1,
-    sequential: j = !1,
-    hevc: N = !1,
-    format: W = "annexb",
-    codec: k = "avc1.4d0034",
-    acceleration: x,
-    bitrate: L,
-    error: y = he,
-    encoderOptions: z = {},
-    flushFrequency: sr = 10,
-  } = t;
-  if (!Sr())
+
+export function createWebCodecsEncoderWithModule(MP4, opts = {}) {
+  const {
+    width,
+    height,
+    groupOfPictures = 20,
+    fps = 30,
+    fragmentation = false,
+    sequential = false,
+    hevc = false,
+    format = "annexb",
+    // codec = "avc1.420034", // Baseline 4.2
+    codec = "avc1.4d0034", // Main 5.2
+    acceleration,
+    bitrate,
+    error = defaultError,
+    encoderOptions = {},
+    flushFrequency = 10,
+  } = opts;
+
+  if (!isWebCodecsSupported()) {
     throw new Error(
       "MP4 H264 encoding/decoding depends on WebCodecs API which is not supported in this environment"
     );
-  if (typeof u != "number" || typeof h != "number")
+  }
+
+  if (typeof width !== "number" || typeof height !== "number") {
     throw new Error("Must specify { width, height } options");
-  if (!isFinite(u) || u < 0 || !isFinite(h) || h < 0)
+  }
+
+  if (!isFinite(width) || width < 0 || !isFinite(height) || height < 0) {
     throw new Error("{ width, height } options must be positive integers");
-  let nr = Rr(),
-    J = _.create_muxer(
-      { width: u, height: h, fps: l, fragmentation: p, sequential: j, hevc: N },
-      X
-    ),
-    lr = {
-      codec: k,
-      width: u,
-      height: h,
-      avc: { format: W },
-      hardwareAcceleration: 'prefer-hardware',
-      bitrate: 8_000_000,
-      ...z,
-    },
-    er = 0,
-    P = new window.VideoEncoder({
-      output(w, b) {
-        K(w, b);
-      },
-      error: y,
-    });
-  return (
-    P.configure(lr),
+  }
+
+  const file = createFile();
+  const mux = MP4.create_muxer(
     {
-      async end() {
-        return await P.flush(), P.close(), _.finalize_muxer(J), nr.contents();
-      },
-      async addFrame(w) {
-        let b = (1 / l) * er * 1e6,
-          I = er % m == 0,
-          A = new VideoFrame(w, { timestamp: b });
-        P.encode(A, { keyFrame: I }),
-          A.close(),
-          sr != null && (er + 1) % sr == 0 && (await P.flush()),
-          er++;
-      },
-      async flush() {
-        return P.flush();
-      },
-    }
+      width,
+      height,
+      fps,
+      fragmentation,
+      sequential,
+      hevc,
+    },
+    mux_write
   );
-  function X(w, b, I) {
-    nr.seek(I);
-    let A = _.HEAPU8.subarray(w, w + b);
-    return nr.write(A) !== A.byteLength;
+
+  const config = {
+    codec,
+    width: width,
+    height: height,
+    avc: {
+      format,
+    },
+    hardwareAcceleration: acceleration,
+    // There is a bug on macOS if this is greater than 30 fps
+    // framerate: fps,
+    bitrate,
+    ...encoderOptions,
+  };
+
+  let frameIndex = 0;
+
+  const encoder = new window.VideoEncoder({
+    output(chunk, opts) {
+      writeAVC(chunk, opts);
+    },
+    error,
+  });
+  encoder.configure(config);
+
+  return {
+    async end() {
+      await encoder.flush();
+      encoder.close();
+      MP4.finalize_muxer(mux);
+      return file.contents();
+    },
+    async addFrame(bitmap) {
+      const timestamp = (1 / fps) * frameIndex * 1000000;
+      const keyFrame = frameIndex % groupOfPictures === 0;
+      let frame = new VideoFrame(bitmap, { timestamp });
+      encoder.encode(frame, { keyFrame });
+      frame.close();
+      if (flushFrequency != null && (frameIndex + 1) % flushFrequency === 0) {
+        await encoder.flush();
+      }
+      frameIndex++;
+    },
+    async flush() {
+      return encoder.flush();
+    },
+  };
+
+  function mux_write(data_ptr, size, offset) {
+    // seek to byte offset in file
+    file.seek(offset);
+    // get subarray of memory we are writing
+    const data = MP4.HEAPU8.subarray(data_ptr, data_ptr + size);
+    // write into virtual file
+    return file.write(data) !== data.byteLength;
   }
-  function Wr(w) {
-    let b = _._malloc(w.byteLength);
-    _.HEAPU8.set(w, b), _.mux_nal(J, b, w.byteLength), _._free(b);
+
+  function write_nal(uint8) {
+    const p = MP4._malloc(uint8.byteLength);
+    MP4.HEAPU8.set(uint8, p);
+    MP4.mux_nal(mux, p, uint8.byteLength);
+    MP4._free(p);
   }
-  function K(w, b) {
-    let I = null,
-      A;
-    if (
-      (b &&
-        (b.description && (A = b.description),
-        b.decoderConfig &&
-          b.decoderConfig.description &&
-          (A = b.decoderConfig.description)),
-      A)
-    )
+
+  function writeAVC(chunk, opts) {
+    let avccConfig = null;
+
+    let description;
+    if (opts) {
+      if (opts.description) {
+        description = opts.description;
+      }
+      if (opts.decoderConfig && opts.decoderConfig.description) {
+        description = opts.decoderConfig.description;
+      }
+    }
+
+    if (description) {
       try {
-        I = de(A);
-      } catch (E) {
-        y(E);
+        avccConfig = parseAVCC(description);
+      } catch (err) {
+        error(err);
         return;
       }
-    let O = [];
-    if (
-      (I &&
-        (I.sps_list.forEach((E) => {
-          O.push(Ur), O.push(E);
-        }),
-        I.pps_list.forEach((E) => {
-          O.push(Ur), O.push(E);
-        })),
-      W === "annexb")
-    ) {
-      let E = new Uint8Array(w.byteLength);
-      w.copyTo(E), O.push(E);
-    } else
+    }
+
+    const nal = [];
+    if (avccConfig) {
+      avccConfig.sps_list.forEach((sps) => {
+        nal.push(START_CODE);
+        nal.push(sps);
+      });
+      avccConfig.pps_list.forEach((pps) => {
+        nal.push(START_CODE);
+        nal.push(pps);
+      });
+    }
+
+    if (format === "annexb") {
+      const uint8 = new Uint8Array(chunk.byteLength);
+      chunk.copyTo(uint8);
+      nal.push(uint8);
+    } else {
       try {
-        let E = new ArrayBuffer(w.byteLength);
-        w.copyTo(E),
-          ye(E).forEach((vr) => {
-            O.push(Ur), O.push(vr);
-          });
-      } catch (E) {
-        y(E);
+        const arrayBuf = new ArrayBuffer(chunk.byteLength);
+        chunk.copyTo(arrayBuf);
+        convertAVCToAnnexBInPlaceForLength4(arrayBuf).forEach((sub) => {
+          nal.push(START_CODE);
+          nal.push(sub);
+        });
+      } catch (err) {
+        error(err);
         return;
       }
-    Wr(ge(O));
+    }
+
+    write_nal(concatBuffers(nal));
   }
 }
-function ge(_) {
-  let t = _.reduce((m, l) => m + l.byteLength, 0),
-    u = new Uint8Array(t),
-    h = 0;
-  for (let m = 0; m < _.length; m++) {
-    let l = _[m];
-    u.set(l, h), (h += l.byteLength);
+
+function concatBuffers(arrays) {
+  // Calculate byteSize from all arrays
+  const size = arrays.reduce((a, b) => a + b.byteLength, 0);
+  // Allcolate a new buffer
+  const result = new Uint8Array(size);
+  let offset = 0;
+  for (let i = 0; i < arrays.length; i++) {
+    const arr = arrays[i];
+    result.set(arr, offset);
+    offset += arr.byteLength;
   }
-  return u;
+  return result;
 }
-function ye(_) {
-  let t = 4,
-    u = 0,
-    h = [],
-    m = _.byteLength,
-    l = new Uint8Array(_);
-  for (; u + t < m; ) {
-    let p = l[u];
-    if (
-      ((p = (p << 8) + l[u + 1]),
-      (p = (p << 8) + l[u + 2]),
-      (p = (p << 8) + l[u + 3]),
-      h.push(new Uint8Array(_, u + t, p)),
-      p == 0)
-    )
-      throw new Error("Error: invalid nal_length 0");
-    u += t + p;
+
+function convertAVCToAnnexBInPlaceForLength4(arrayBuf) {
+  const kLengthSize = 4;
+  let pos = 0;
+  const chunks = [];
+  const size = arrayBuf.byteLength;
+  const uint8 = new Uint8Array(arrayBuf);
+  while (pos + kLengthSize < size) {
+    // read uint 32, 4 byte NAL length
+    let nal_length = uint8[pos];
+    nal_length = (nal_length << 8) + uint8[pos + 1];
+    nal_length = (nal_length << 8) + uint8[pos + 2];
+    nal_length = (nal_length << 8) + uint8[pos + 3];
+
+    chunks.push(new Uint8Array(arrayBuf, pos + kLengthSize, nal_length));
+    if (nal_length == 0) throw new Error("Error: invalid nal_length 0");
+    pos += kLengthSize + nal_length;
   }
-  return h;
+  return chunks;
 }
-function de(_) {
-  let t = new DataView(_),
-    u = 0,
-    h = t.getUint8(u++),
-    m = t.getUint8(u++),
-    l = t.getUint8(u++),
-    p = t.getUint8(u++),
-    j = (t.getUint8(u++) & 3) + 1;
-  if (j !== 4) throw new Error("Expected length_size to indicate 4 bytes");
-  let N = t.getUint8(u++) & 31,
-    W = [];
-  for (let L = 0; L < N; L++) {
-    let y = t.getUint16(u, !1);
-    u += 2;
-    let z = new Uint8Array(t.buffer, u, y);
-    W.push(z), (u += y);
+
+function parseAVCC(avcc) {
+  const view = new DataView(avcc);
+  let off = 0;
+  const version = view.getUint8(off++);
+  const profile = view.getUint8(off++);
+  const compat = view.getUint8(off++);
+  const level = view.getUint8(off++);
+  const length_size = (view.getUint8(off++) & 0x3) + 1;
+  if (length_size !== 4)
+    throw new Error("Expected length_size to indicate 4 bytes");
+  const numSPS = view.getUint8(off++) & 0x1f;
+  const sps_list = [];
+  for (let i = 0; i < numSPS; i++) {
+    const sps_len = view.getUint16(off, false);
+    off += 2;
+    const sps = new Uint8Array(view.buffer, off, sps_len);
+    sps_list.push(sps);
+    off += sps_len;
   }
-  let k = t.getUint8(u++),
-    x = [];
-  for (let L = 0; L < k; L++) {
-    let y = t.getUint16(u, !1);
-    u += 2;
-    let z = new Uint8Array(t.buffer, u, y);
-    x.push(z), (u += y);
+  const numPPS = view.getUint8(off++);
+  const pps_list = [];
+  for (let i = 0; i < numPPS; i++) {
+    const pps_len = view.getUint16(off, false);
+    off += 2;
+    const pps = new Uint8Array(view.buffer, off, pps_len);
+    pps_list.push(pps);
+    off += pps_len;
   }
   return {
-    offset: u,
-    version: h,
-    profile: m,
-    compat: l,
-    level: p,
-    length_size: j,
-    pps_list: x,
-    sps_list: W,
-    numSPS: N,
+    offset: off,
+    version,
+    profile,
+    compat,
+    level,
+    length_size,
+    pps_list,
+    sps_list,
+    numSPS,
   };
 }
-export {
-  Rr as createFile,
-  Kr as createWebCodecsEncoderWithModule,
-  _e as default,
-  Sr as isWebCodecsSupported,
-};
+
+export {Module as default};
