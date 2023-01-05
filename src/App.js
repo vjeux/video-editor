@@ -300,5 +300,3 @@ export default function App({worker}) {
     </div>
   );
 };
-
-export default App;
