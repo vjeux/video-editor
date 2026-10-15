@@ -1,8 +1,9 @@
+import { DEFAULT_TEXT_SHADOW } from "./factories";
 import type { Project } from "./types";
 
 type Raw = Record<string, unknown>;
 
-const CURRENT_VERSION = 3;
+const CURRENT_VERSION = 4;
 
 /**
  * One step per version: each takes a project of version N and returns N + 1.
@@ -12,6 +13,7 @@ const CURRENT_VERSION = 3;
 const MIGRATIONS: Record<number, (project: Raw) => Raw> = {
   1: (project) => ({ ...project, version: 2 }),
   2: (project) => ({ ...project, version: 3 }),
+  3: (project) => ({ ...project, version: 4 }),
 };
 
 /** Fields every clip has, with their empty values. */
@@ -26,13 +28,23 @@ const CLIP_DEFAULTS: Raw = {
 /** Extra fields per clip type, applied beneath the clip's own values. */
 const TYPE_DEFAULTS: Record<string, Raw> = {
   media: { speedRamp: null, audioEffects: [] },
-  text: {},
+  text: { textMotion: null, karaoke: null },
   adjustment: {},
 };
 
 /** Nested objects that gained fields: merged so existing keys win. */
 const NESTED_DEFAULTS: Record<string, Record<string, Raw>> = {
-  text: { style: { stroke: null } },
+  text: {
+    style: {
+      stroke: null,
+      // Titles always had this shadow baked in; keep it so old projects look the same.
+      shadow: DEFAULT_TEXT_SHADOW,
+      glow: null,
+      gradient: null,
+      highlight: null,
+      shine: null,
+    },
+  },
 };
 
 /**

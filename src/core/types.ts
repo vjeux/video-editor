@@ -113,6 +113,35 @@ export interface TextStyle {
   background: string | null;
   /** Outline around the glyphs (caption style); `null` for none. */
   stroke: { color: string; width: number } | null;
+  /** Drop shadow; blur and offsets are fractions of the font size. */
+  shadow: { color: string; blur: number; x: number; y: number } | null;
+  /** Neon-style glow; `size` is a fraction of the font size. */
+  glow: { color: string; size: number } | null;
+  /** Gradient fill replacing `color`; angle in degrees (0 = left → right). */
+  gradient: { from: string; to: string; angle: number } | null;
+  /** Rounded box behind each line or each word; `padding` is a fraction of the font size. */
+  highlight: { color: string; mode: "line" | "word"; padding: number } | null;
+  /** A light band sweeping across the glyphs every `period` seconds. */
+  shine: { color: string; period: number } | null;
+}
+
+/** The units a title is split into for staggered animation. */
+export type TextUnit = "letter" | "word" | "line";
+
+/** Per-unit enter animation: each unit starts `stagger` seconds after the previous. */
+export interface TextMotion {
+  presetId: string;
+  unit: TextUnit;
+  duration: Seconds;
+  stagger: Seconds;
+  easing: Easing;
+}
+
+/** Words light up in turn across the clip, like sung lyrics or spoken captions. */
+export interface Karaoke {
+  color: string;
+  /** "fill" recolours spoken words; "pop" also scales the current word; "box" puts a box behind it. */
+  mode: "fill" | "pop" | "box";
 }
 
 export interface TextClip extends ClipBase {
@@ -120,6 +149,8 @@ export interface TextClip extends ClipBase {
   text: string;
   style: TextStyle;
   animation: TextAnimation;
+  textMotion: TextMotion | null;
+  karaoke: Karaoke | null;
 }
 
 /** Applies its effects to everything composited below it while active. */
@@ -176,7 +207,7 @@ export interface ProjectSettings {
 }
 
 export interface Project {
-  version: 3;
+  version: 4;
   name: string;
   settings: ProjectSettings;
   assets: Record<Id, Asset>;

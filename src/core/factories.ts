@@ -14,6 +14,9 @@ import type {
 
 export const DEFAULT_TRANSFORM: Transform = { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 };
 
+/** The subtle legibility shadow titles have always had, now adjustable. */
+export const DEFAULT_TEXT_SHADOW = { color: "rgba(0, 0, 0, 0.35)", blur: 0.2, x: 0, y: 0.02 };
+
 export const DEFAULT_TEXT_STYLE: TextStyle = {
   fontFamily: "Inter Variable",
   fontWeight: 700,
@@ -23,6 +26,11 @@ export const DEFAULT_TEXT_STYLE: TextStyle = {
   align: "center",
   background: null,
   stroke: null,
+  shadow: DEFAULT_TEXT_SHADOW,
+  glow: null,
+  gradient: null,
+  highlight: null,
+  shine: null,
 };
 
 export const DEFAULT_STILL_DURATION = 5;
@@ -38,7 +46,7 @@ export const TRACK_PREFIX: Record<TrackKind, string> = { video: "V", audio: "A",
 
 export function createProject({ name }: { name: string }): Project {
   return {
-    version: 3,
+    version: 4,
     name,
     settings: { width: 1920, height: 1080, fps: 30, background: "#000000" },
     assets: {},
@@ -85,6 +93,8 @@ export function createTextClip(at: { id: Id; trackId: Id; start: number; text: s
     duration: DEFAULT_TEXT_DURATION,
     style: DEFAULT_TEXT_STYLE,
     animation: "fade",
+    textMotion: null,
+    karaoke: null,
     fadeIn: 0,
     fadeOut: 0.3,
     transform: DEFAULT_TRANSFORM,
