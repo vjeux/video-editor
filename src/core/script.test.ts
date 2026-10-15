@@ -23,7 +23,7 @@ describe("runScript", () => {
     expect(logs).toEqual(["[0,4]", "1"]);
   });
 
-  it("adds a title per video clip, as in the scripting issue", async () => {
+  it("adds a title per video clip, overwriting what was underneath", async () => {
     const { project } = await run(`
       const dates = ["Feb 12", "Apr 12"];
       timeline.clips({ type: "video" }).forEach((clip, i) => {
@@ -31,13 +31,10 @@ describe("runScript", () => {
       });
     `);
     const titles = Object.values(project.clips).filter((c): c is TextClip => c.type === "text");
-    expect(titles.map((t) => [t.text, t.start]).sort()).toEqual(
-      [
-        ["Feb 12", 0],
-        ["Hello", 0],
-        ["Apr 12", 4],
-      ].sort(),
-    );
+    expect(titles.map((t) => [t.text, t.start]).sort()).toEqual([
+      ["Apr 12", 4],
+      ["Feb 12", 0],
+    ]);
   });
 
   it("clones a clip with overrides", async () => {
