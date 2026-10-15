@@ -296,6 +296,15 @@ export function fillScale(project: Project, clip: Clip): number {
   return cover / contain;
 }
 
-export const frameSourceTime = (_project: Project, _clip: MediaClip, _t: Seconds): Seconds => {
-  throw new Error("not implemented");
-};
+/** Last decodable instant of a source: a hair before its end. */
+const SOURCE_END_MARGIN = 1 / 120;
+
+/**
+ * Source time to show for a clip at `t`, which may lie outside the clip
+ * (transitions extend both sides of a cut), clamped to the media.
+ */
+export function frameSourceTime(project: Project, clip: MediaClip, t: Seconds): Seconds {
+  const duration = project.assets[clip.assetId]?.duration;
+  const end = duration == null ? Infinity : Math.max(0, duration - SOURCE_END_MARGIN);
+  return Math.min(end, Math.max(0, sourceTimeAt(clip, t)));
+}
