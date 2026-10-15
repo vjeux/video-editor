@@ -4,16 +4,23 @@ import { colors, fonts } from "../theme/tokens.stylex";
 
 const styles = stylex.create({
   kbd: {
-    fontFamily: fonts.mono,
-    fontSize: 10,
-    color: colors.faint,
+    display: "inline-grid",
+    placeItems: "center",
+    minWidth: 17,
+    height: 17,
     paddingBlock: 0,
     paddingInline: 4,
     marginInlineStart: 2,
-    borderRadius: 3,
+    borderRadius: 4,
     borderWidth: 1,
+    borderBottomWidth: 2,
     borderStyle: "solid",
-    borderColor: colors.line2,
+    borderColor: "rgba(255, 255, 255, 0.07)",
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    lineHeight: 1,
+    color: colors.muted,
     whiteSpace: "nowrap",
   },
 });

@@ -60,6 +60,7 @@ export function deleteSelection(ripple = false) {
   if (ids.length) commit((p) => removeClips(p, ids, { ripple }));
 }
 
+/** Adds a title at the playhead and opens it for typing. */
 export function addText(text = "Your title") {
   const id = newId();
   state().commit((p) => {
@@ -70,7 +71,15 @@ export function addText(text = "Your title") {
       newId,
     );
   });
-  state().select([id]);
+  state().editText(id);
+}
+
+/** Opens the selected title for inline editing, unless its track is locked. */
+export function editSelectedTitle() {
+  const { project, selection, editText } = state();
+  const clip = selection.length === 1 ? project.clips[selection[0] ?? ""] : undefined;
+  const locked = project.tracks.find((t) => t.id === clip?.trackId)?.locked ?? true;
+  if (clip?.type === "text" && !locked) editText(clip.id);
 }
 
 export const addMarker = () => addMarkerAt(state().playhead);
@@ -137,6 +146,7 @@ export const SHORTCUTS: Record<string, Shortcut> = {
   "Mod+KeyV": pasteAtPlayhead,
   "Mod+KeyD": duplicateSelection,
   KeyT: () => addText(),
+  Enter: editSelectedTitle,
   Equal: () => zoomBy(1.25),
   Minus: () => zoomBy(0.8),
 };

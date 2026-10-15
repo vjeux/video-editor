@@ -1,8 +1,12 @@
 import * as stylex from "@stylexjs/stylex";
-import { colors } from "../theme/tokens.stylex";
 
 const styles = stylex.create({
-  separator: { height: 1, marginBlock: 4, marginInline: 6, backgroundColor: colors.line },
+  separator: {
+    height: 1,
+    marginBlock: 4,
+    marginInline: 8,
+    backgroundColor: "rgba(255, 255, 255, 0.07)",
+  },
 });
 
 export function MenuSeparator() {

@@ -1,20 +1,16 @@
 import * as stylex from "@stylexjs/stylex";
 import type { KeyboardEvent } from "react";
-import { colors, fonts, radii } from "../theme/tokens.stylex";
+import { fonts } from "../theme/tokens.stylex";
+import { surfaces } from "./surfaces";
 
 const styles = stylex.create({
   area: {
     width: "100%",
+    height: "auto",
     minHeight: 34,
     paddingBlock: 7,
     paddingInline: 9,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderStyle: "solid",
-    borderColor: { default: colors.line, ":focus": colors.accent },
-    backgroundColor: colors.bg,
-    color: colors.text,
-    outline: "none",
+    lineHeight: 1.45,
     resize: "vertical",
     userSelect: "text",
   },
@@ -52,7 +48,7 @@ export function TextArea({
       spellCheck={!code}
       onChange={(e) => onChange(e.target.value)}
       onKeyDown={onKeyDown}
-      {...stylex.props(styles.area, code && styles.code)}
+      {...stylex.props(surfaces.well, styles.area, code && styles.code)}
     />
   );
 }

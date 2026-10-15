@@ -21,7 +21,10 @@ Built on [Mediabunny](https://mediabunny.dev/) + WebCodecs · React 19 · StyleX
   trim, blade and split, ripple-delete, copy, paste and duplicate. Snapping
   covers edges, markers and the playhead. Tracks can be muted, soloed, hidden
   and locked. Drop a clip over others and it overwrites exactly the space it
-  covers.
+  covers. Each clip shows its effect stack as chips (click one to bypass it),
+  its in and out animations as bands with their easing curve (drag the edge
+  to retime), its loop as a badge, and each transition as a labelled block
+  over its cut (drag either edge to resize); right-click any of them for more.
 - **What you see is what you export.** The live preview and the export share
   one compositor, and live playback and the export mixdown share one Web Audio
   scheduler.
@@ -39,8 +42,18 @@ Built on [Mediabunny](https://mediabunny.dev/) + WebCodecs · React 19 · StyleX
 - **Audio effects.** Voice enhance, EQ, compressor, reverb, echo, bass boost,
   telephone, megaphone, muffled, pitch shift, robot, distortion, tremolo,
   filter, pan and gain. They're heard in playback and baked into the export.
-- **Captions and titles.** Eight bundled fonts with weight, tracking, colour,
-  a box and an outline, plus text looks: adjustable drop shadow, neon glow,
+- **Silence removal.** "Remove silences…" on a clip with speech finds its
+  pauses (the threshold adapts to the recording), shows them striped on the
+  timeline while you tune threshold, minimum pause and padding, then cuts
+  them out as jump cuts in one undo step.
+- **Auto-captions.** Right-click a clip with speech and choose "Generate
+  captions…": Whisper transcribes it on your device (WebGPU, or WASM where
+  that is missing) and each phrase becomes a timed title on a Captions track
+  in any caption look, with karaoke following every spoken word. The speech
+  model downloads once and is cached; no audio leaves the browser.
+- **Captions and titles.** Type straight onto the monitor: double-click a
+  title (or press `Enter`) to edit it in place. Eight bundled fonts with
+  weight, tracking, colour, a box and an outline, plus text looks: adjustable drop shadow, neon glow,
   gradient fill, line or word highlight box and a sweeping shine. Per-letter,
   per-word or per-line animation (pop, slide, bounce, typewriter, wave, jiggle
   and more, with stagger and easing), karaoke word highlighting, and one-click
@@ -153,6 +166,7 @@ A pre-commit hook runs `vp check --fix` on staged files.
 | Copy / paste / duplicate    | `⌘C` / `⌘V` / `⌘D`    |
 | Select / blade tool         | `V` / `B`             |
 | Add title / marker          | `T` / `M`             |
+| Edit selected title         | `Enter`               |
 | Toggle snapping / loop      | `N` / `L`             |
 | Zoom timeline               | `+` `−`, or `⌘`+wheel |
 | Undo / redo                 | `⌘Z` / `⇧⌘Z`          |
@@ -210,14 +224,14 @@ ui ──► app ──► store ──► core
           └──► engine ──► core
 ```
 
-| Layer         | Responsibility                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/core`    | Pure TypeScript. Holds the project model and every edit (overwrite placement, move, trim, split, ripple, speed, ramps, paste), effect stacks, transitions, In/Out/Loop animations, the audio-effect catalog, shader metadata and `.cube` parsing, versioned migrations, timecode, scripting and annotation parsing. Unit-tested without a browser.                                                                                                                                                             |
-| `src/effects` | The built-in shader library, written in the same uniform-comment format users import, plus effect lookup.                                                                                                                                                                                                                                                                                                                                                                                                      |
-| `src/engine`  | The Mediabunny and Web API adapter. `MediaLibrary` probes files, holds preview sinks, decodes audio and makes thumbnails. `FrameStream` serves frames for scrubbing and sequential playback. One compositor serves preview and export: `GpuEffects` runs effect chains, transitions and LUTs on WebGL2, and adjustment layers filter what's below them. One audio scheduler, with each clip's Web Audio effect chain, serves both playback and the mixdown. Also holds the exporter and IndexedDB persistence. |
-| `src/store`   | Zustand stores. The editor store owns the project behind a single `commit()` writer with undo/redo; continuous gestures coalesce into one step.                                                                                                                                                                                                                                                                                                                                                                |
-| `src/app`     | Commands that combine store and engine: import, the playback loop, keyboard and context-menu actions, session restore and autosave, and the single error-reporting seam.                                                                                                                                                                                                                                                                                                                                       |
-| `src/ui`      | React 19 with the React Compiler, one component per file, styled with StyleX (tokens in `ui/theme/tokens.stylex.ts`). Uses `use()` + Suspense for session restore and codec probing, `useActionState` for export and scripts, `<Activity>` for dialogs that keep their state, and `<ViewTransition>` for animated dialogs.                                                                                                                                                                                     |
+| Layer         | Responsibility                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/core`    | Pure TypeScript. Holds the project model and every edit (overwrite placement, move, trim, split, ripple, speed, ramps, paste), effect stacks, transitions, In/Out/Loop animations, the audio-effect catalog, shader metadata and `.cube` parsing, versioned migrations, timecode, scripting and annotation parsing. Unit-tested without a browser.                                                                                                                                                                                     |
+| `src/effects` | The built-in shader library, written in the same uniform-comment format users import, plus effect lookup.                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `src/engine`  | The Mediabunny and Web API adapter. `MediaLibrary` probes files, holds preview sinks, decodes audio and makes thumbnails. `FrameStream` serves frames for scrubbing and sequential playback. One compositor serves preview and export: `GpuEffects` runs effect chains, transitions and LUTs on WebGL2, and adjustment layers filter what's below them. One audio scheduler, with each clip's Web Audio effect chain, serves both playback and the mixdown. Also holds the exporter and IndexedDB persistence.                         |
+| `src/store`   | Zustand stores. The editor store owns the project behind a single `commit()` writer with undo/redo; continuous gestures coalesce into one step.                                                                                                                                                                                                                                                                                                                                                                                        |
+| `src/app`     | Commands that combine store and engine: import, the playback loop, keyboard and context-menu actions, session restore and autosave, and the single error-reporting seam.                                                                                                                                                                                                                                                                                                                                                               |
+| `src/ui`      | React 19 with the React Compiler, one component per file, styled with StyleX (tokens in `ui/theme/tokens.stylex.ts`). Controls in `ui/controls` share two surfaces (recessed wells, raised plates) and one portalled `Popover` behind menus and dropdowns; its placement and the slider/scrub math are pure, unit-tested helpers. Uses `use()` + Suspense for session restore and codec probing, `useActionState` for export and scripts, `<Activity>` for dialogs that keep their state, and `<ViewTransition>` for animated dialogs. |
 
 Some design choices worth knowing:
 

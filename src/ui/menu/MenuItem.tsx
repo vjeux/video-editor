@@ -1,68 +1,55 @@
-import * as stylex from "@stylexjs/stylex";
 import type { MenuEntry } from "../../store/context-menu";
 import { Icon } from "../controls/Icon";
-import { colors, fonts, radii } from "../theme/tokens.stylex";
+import { isIconName } from "../controls/icon-paths";
+import { Kbd } from "../controls/Kbd";
+import { ListRow } from "../controls/ListRow";
 
-type Item = Extract<MenuEntry, { kind: "item" }>;
+type Entry = Exclude<MenuEntry, { kind: "separator" }>;
 
-const styles = stylex.create({
-  item: {
-    display: "grid",
-    gridTemplateColumns: "16px minmax(0, 1fr) auto",
-    alignItems: "center",
-    gap: 8,
-    width: "100%",
-    height: 28,
-    paddingBlock: 0,
-    paddingInline: 8,
-    borderWidth: 0,
-    borderRadius: radii.sm,
-    backgroundColor: "transparent",
-    color: colors.text,
-    fontSize: 12.5,
-    textAlign: "start",
-    cursor: "pointer",
-    outline: "none",
-  },
-  active: { backgroundColor: colors.accent, color: "#fff" },
-  danger: { color: colors.danger },
-  dangerActive: { backgroundColor: colors.danger, color: "#fff" },
-  disabled: { color: colors.faint, cursor: "default" },
-  label: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  shortcut: { fontFamily: fonts.mono, fontSize: 10.5, opacity: 0.6 },
-});
+function leadFor(entry: Entry) {
+  if (entry.kind === "item" && entry.checked)
+    return <Icon name="check" size={14} strokeWidth={2.4} />;
+  if (!entry.icon) return null;
+  if (!isIconName(entry.icon)) throw new Error(`Unknown menu icon "${entry.icon}"`);
+  return <Icon name={entry.icon} size={14} strokeWidth={1.9} />;
+}
+
+/** Splits "⇧⌘D" into one key cap per symbol; words such as "Space" stay whole. */
+const keyCaps = (shortcut: string) => shortcut.match(/[A-Za-z]{2,}|./gu) ?? [];
 
 export function MenuItem({
-  item,
+  entry,
+  index,
   active,
   onHover,
-  onRun,
+  onPick,
 }: {
-  item: Item;
+  entry: Entry;
+  index: number;
   active: boolean;
   onHover: () => void;
-  onRun: () => void;
+  onPick: () => void;
 }) {
-  const highlighted = active && !item.disabled;
+  const trail =
+    entry.kind === "submenu" ? (
+      <Icon name="chevronRight" size={13} strokeWidth={2.2} />
+    ) : (
+      entry.shortcut && keyCaps(entry.shortcut).map((key, i) => <Kbd key={i}>{key}</Kbd>)
+    );
   return (
-    <button
-      type="button"
-      role={item.checked === undefined ? "menuitem" : "menuitemcheckbox"}
-      aria-checked={item.checked}
-      aria-disabled={item.disabled}
-      tabIndex={-1}
-      onPointerEnter={onHover}
-      onClick={() => !item.disabled && onRun()}
-      {...stylex.props(
-        styles.item,
-        item.danger && styles.danger,
-        highlighted && (item.danger ? styles.dangerActive : styles.active),
-        item.disabled && styles.disabled,
-      )}
-    >
-      <span>{item.checked && <Icon name="check" size={13} strokeWidth={2.4} />}</span>
-      <span {...stylex.props(styles.label)}>{item.label}</span>
-      <span {...stylex.props(styles.shortcut)}>{item.shortcut}</span>
-    </button>
+    <ListRow
+      role={entry.kind === "item" && entry.checked !== undefined ? "menuitemcheckbox" : "menuitem"}
+      index={index}
+      label={entry.label}
+      lead={leadFor(entry)}
+      leadTone={entry.kind === "item" && entry.checked ? "accent" : "muted"}
+      trail={trail}
+      selected={entry.kind === "item" ? entry.checked : undefined}
+      active={active}
+      disabled={entry.disabled}
+      danger={entry.kind === "item" && entry.danger}
+      onHover={onHover}
+      onPick={onPick}
+    />
   );
 }

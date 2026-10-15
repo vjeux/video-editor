@@ -1,6 +1,7 @@
 import type { TrackKind } from "../../core/types";
 
-export const LANE_HEIGHT: Record<TrackKind, number> = { video: 52, audio: 52, text: 38 };
+/** Room for a clip's label, its art and the effect chip strip. */
+export const LANE_HEIGHT: Record<TrackKind, number> = { video: 56, audio: 56, text: 46 };
 export const RULER_HEIGHT = 28;
 
 /** The horizontally visible window of the lanes, in content pixels. */

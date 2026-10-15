@@ -1,5 +1,5 @@
 import { clipOpacityAt } from "../core/animation";
-import { animationStateAt, type MotionDelta } from "../core/clip-animations";
+import { animationStateAt, IDENTITY_MOTION, type MotionDelta } from "../core/clip-animations";
 import { defaultParams } from "../core/effects";
 import { layersAt, type Layer } from "../core/layers";
 import { containSize } from "../core/layout";
@@ -49,6 +49,8 @@ export interface RenderServices {
   gpu: GpuEffects | null;
   resolve: (effectId: string) => EffectDefinition | undefined;
   scratch: ScratchCanvases;
+  /** A title drawn at rest (no animation or fades), e.g. while it is edited inline. */
+  atRest?: string | null;
 }
 
 /** Reusable full-frame 2D canvases for rendering layers that go through the GPU. */
@@ -113,6 +115,7 @@ function drawPlaced(
   motion: MotionDelta,
   alpha: number,
   frames: FrameSource,
+  atRest: boolean,
 ) {
   const { width, height } = project.settings;
   const { x, y, scale, rotation } = clip.transform;
@@ -121,7 +124,7 @@ function drawPlaced(
   ctx.translate(width / 2 + x + motion.dx * width, height / 2 + y + motion.dy * height);
   ctx.rotate(((rotation + motion.rotation) * Math.PI) / 180);
   ctx.scale(scale * motion.scale, scale * motion.scale);
-  if (clip.type === "text") drawText(ctx, clip, insideClip(clip, t));
+  if (clip.type === "text") drawText(ctx, clip, insideClip(clip, t), atRest);
   else drawMedia(ctx, project, clip, t, frames);
   ctx.restore();
 }
@@ -149,18 +152,19 @@ function drawClip(
   slot: number,
 ) {
   const local = insideClip(clip, t);
-  const { motion } = animationStateAt(clip, local);
-  const alpha = clipOpacityAt(clip, local) * motion.opacity;
+  const atRest = services.atRest === clip.id;
+  const { motion } = atRest ? { motion: IDENTITY_MOTION } : animationStateAt(clip, local);
+  const alpha = atRest ? clip.transform.opacity : clipOpacityAt(clip, local) * motion.opacity;
   if (alpha <= 0) return;
   const passes = services.gpu ? effectPasses(project, clip, t, services) : [];
   if (passes.length === 0 || !services.gpu) {
-    drawPlaced(ctx, project, clip, t, motion, alpha, services.frames);
+    drawPlaced(ctx, project, clip, t, motion, alpha, services.frames, atRest);
     return;
   }
   const scratch = services.scratch.get(slot, ctx.canvas.width, ctx.canvas.height);
   const scale = ctx.canvas.width / project.settings.width;
   scratch.setTransform(scale, 0, 0, scale, 0, 0);
-  drawPlaced(scratch, project, clip, t, motion, 1, services.frames);
+  drawPlaced(scratch, project, clip, t, motion, 1, services.frames, atRest);
   blit(ctx, services.gpu.apply(scratch.canvas, passes), alpha);
 }
 

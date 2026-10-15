@@ -1,29 +1,52 @@
 import * as stylex from "@stylexjs/stylex";
-import type { ReactNode } from "react";
-import { colors, radii } from "../theme/tokens.stylex";
+import type { KeyboardEvent, ReactNode } from "react";
+import { colors, motion, radii, shadows, sizes } from "../theme/tokens.stylex";
+import { stepEnabled } from "./roving";
+
+const INSET = 2;
 
 const styles = stylex.create({
   group: {
+    position: "relative",
     display: "flex",
-    gap: 2,
-    padding: 2,
-    borderRadius: radii.sm,
+    height: sizes.control,
+    padding: INSET,
+    borderRadius: radii.md,
     borderWidth: 1,
     borderStyle: "solid",
     borderColor: colors.line,
-    backgroundColor: colors.bg,
+    backgroundColor: colors.field,
+    boxShadow: shadows.well,
   },
+  thumb: {
+    position: "absolute",
+    top: INSET,
+    bottom: INSET,
+    left: INSET,
+    borderRadius: 5,
+    backgroundColor: colors.raised,
+    boxShadow: shadows.raised,
+    pointerEvents: "none",
+    transitionProperty: "transform",
+    transitionDuration: motion.base,
+    transitionTimingFunction: motion.spring,
+  },
+  /** Equal-width options let the thumb move by whole multiples of its own width. */
+  slot: (count: number, index: number) => ({
+    width: `calc((100% - ${INSET * 2}px) / ${count})`,
+    transform: `translateX(${index * 100}%)`,
+  }),
   option: {
+    position: "relative",
     flexGrow: 1,
     flexBasis: 0,
     minWidth: 0,
-    height: 22,
     padding: 0,
     borderWidth: 0,
-    borderRadius: radii.sm,
+    borderRadius: 5,
     display: "grid",
     placeItems: "center",
-    fontSize: 11,
+    fontSize: 11.5,
     whiteSpace: "nowrap",
     overflow: "hidden",
     textOverflow: "ellipsis",
@@ -34,9 +57,11 @@ const styles = stylex.create({
       ":disabled": colors.faint,
     },
     backgroundColor: "transparent",
+    transitionProperty: "color",
+    transitionDuration: motion.fast,
   },
   compact: { fontSize: 10.5, paddingInline: 2 },
-  on: { backgroundColor: colors.panel3, color: colors.text },
+  on: { color: { default: colors.text, ":hover:not(:disabled)": colors.text }, fontWeight: 550 },
 });
 
 export function Segmented<T extends string>({
@@ -53,22 +78,39 @@ export function Segmented<T extends string>({
   /** Tighter options for long rows such as speed presets. */
   compact?: boolean;
 }) {
+  const selected = options.findIndex((o) => o.value === value);
+  const enabled = options.map((o) => !o.disabled);
+  // Roving tab stop: the selected option, or the first one that can be chosen.
+  const tabStop = selected >= 0 ? selected : stepEnabled(enabled, -1, 1);
+
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    const delta = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+    if (delta !== 1 && delta !== -1) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const next = stepEnabled(enabled, selected, delta);
+    const option = options[next];
+    if (!option) return;
+    onChange(option.value);
+    e.currentTarget.querySelectorAll<HTMLElement>("[role=radio]")[next]?.focus();
+  };
+
   return (
-    <div role="radiogroup" aria-label={label} {...stylex.props(styles.group)}>
-      {options.map((o) => (
+    <div role="radiogroup" aria-label={label} onKeyDown={onKeyDown} {...stylex.props(styles.group)}>
+      {selected >= 0 && (
+        <span aria-hidden {...stylex.props(styles.thumb, styles.slot(options.length, selected))} />
+      )}
+      {options.map((o, i) => (
         <button
           key={o.value}
           type="button"
           role="radio"
-          aria-checked={o.value === value}
+          aria-checked={i === selected}
+          tabIndex={i === tabStop ? 0 : -1}
           title={o.title}
           disabled={o.disabled}
           onClick={() => onChange(o.value)}
-          {...stylex.props(
-            styles.option,
-            compact && styles.compact,
-            o.value === value && styles.on,
-          )}
+          {...stylex.props(styles.option, compact && styles.compact, i === selected && styles.on)}
         >
           {o.label}
         </button>

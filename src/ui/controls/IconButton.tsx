@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { colors, radii } from "../theme/tokens.stylex";
+import { colors, motion, radii } from "../theme/tokens.stylex";
 import { Icon } from "./Icon";
 import type { IconName } from "./icon-paths";
 
@@ -17,6 +17,10 @@ const styles = stylex.create({
     opacity: { default: 1, ":disabled": 0.4 },
     color: { default: colors.muted, ":hover:not(:disabled)": colors.text },
     backgroundColor: { default: "transparent", ":hover:not(:disabled)": colors.panel2 },
+    transform: { default: "none", ":active:not(:disabled)": "scale(0.94)" },
+    transitionProperty: "background-color, color, transform",
+    transitionDuration: motion.fast,
+    transitionTimingFunction: motion.ease,
   },
   small: { width: 24, height: 24 },
   on: {
@@ -45,7 +49,7 @@ export function IconButton({
   return (
     <button
       type="button"
-      title={title}
+      data-tooltip={title}
       aria-label={title}
       aria-pressed={on}
       disabled={disabled}

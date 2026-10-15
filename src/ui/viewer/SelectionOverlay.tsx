@@ -7,6 +7,7 @@ import type { Clip, Transform } from "../../core/types";
 import { useEditor } from "../../store";
 import { useGestureKey } from "../gesture";
 import { colors } from "../theme/tokens.stylex";
+import { InlineTextEditor } from "./InlineTextEditor";
 import { useFontsVersion } from "./use-fonts-version";
 import { boxOf, contains, rotateAbout, scaleAbout, snapOffset, type Point } from "./layer-box";
 
@@ -117,6 +118,8 @@ export function SelectionOverlay({
   const playhead = useEditor((s) => s.playhead);
   const selection = useEditor((s) => s.selection);
   const select = useEditor((s) => s.select);
+  const editingText = useEditor((s) => s.editingText);
+  const editText = useEditor((s) => s.editText);
   const gesture = useGestureKey("viewer");
   const layers = visualLayers(project, playhead);
   const selected = layers.find((c) => selection.length === 1 && c.id === selection[0]);
@@ -173,6 +176,7 @@ export function SelectionOverlay({
   };
 
   const locked = selected ? isLocked(selected) : false;
+  const editing = selected?.type === "text" && selected.id === editingText ? selected : null;
 
   return (
     <div
@@ -202,7 +206,8 @@ export function SelectionOverlay({
     >
       {selected && box && (
         <div
-          onPointerDown={(e) => startDrag(e, selected, "move")}
+          onPointerDown={(e) => !editing && startDrag(e, selected, "move")}
+          onDoubleClick={() => selected.type === "text" && !locked && editText(selected.id)}
           {...stylex.props(
             styles.box,
             locked && styles.locked,
@@ -215,7 +220,7 @@ export function SelectionOverlay({
             ),
           )}
         >
-          {!locked && (
+          {!locked && !editing && (
             <>
               {CORNERS.map(([name, corner]) => (
                 <div
@@ -234,6 +239,7 @@ export function SelectionOverlay({
           )}
         </div>
       )}
+      {editing && box && <InlineTextEditor clip={editing} box={box} scale={scale} />}
     </div>
   );
 }

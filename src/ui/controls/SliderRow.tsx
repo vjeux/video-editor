@@ -3,7 +3,7 @@ import { NumberField } from "./NumberField";
 import { Range } from "./Range";
 import { Row } from "./Row";
 
-/** Label + slider + number field; a drag or a typed value is one undo step. */
+/** Label + slider + number field; a drag, a scrub or a typed value is one undo step. */
 export function SliderRow({
   label,
   value,
@@ -14,6 +14,7 @@ export function SliderRow({
   suffix,
   display = (v) => v,
   parse = (v) => v,
+  defaultValue,
   onChange,
 }: {
   label: string;
@@ -26,6 +27,8 @@ export function SliderRow({
   /** Maps the stored value to the shown one (e.g. 0–1 → 0–100 %). */
   display?: (v: number) => number;
   parse?: (v: number) => number;
+  /** Marked on the slider; double-click resets to it. */
+  defaultValue?: number;
   onChange: (value: number, coalesce: string) => void;
 }) {
   const gesture = useGestureKey(label);
@@ -39,6 +42,7 @@ export function SliderRow({
         step={step ?? (max - min) / 200}
         onChange={(v) => onChange(v, gesture.key)}
         onCommitEnd={gesture.renew}
+        defaultValue={defaultValue}
       />
       <NumberField
         label={label}
@@ -47,11 +51,9 @@ export function SliderRow({
         suffix={suffix}
         min={display(min)}
         max={display(max)}
-        step={step ? display(step) - display(0) : 1}
-        onChange={(v) => {
-          onChange(parse(v), `${gesture.key}:typed`);
-          gesture.renew();
-        }}
+        step={step ? display(step) - display(0) : 10 ** -precision}
+        onChange={(v) => onChange(parse(v), gesture.key)}
+        onCommitEnd={gesture.renew}
       />
     </Row>
   );

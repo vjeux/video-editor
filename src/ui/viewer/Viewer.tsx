@@ -142,19 +142,14 @@ export function Viewer() {
           compact
           label="Canvas format"
           value={preset?.label ?? "custom"}
+          options={[
+            ...(preset
+              ? []
+              : [{ value: "custom", label: `Custom · ${settings.width}×${settings.height}` }]),
+            ...FORMAT_PRESETS.map((p) => ({ value: p.label, label: p.label })),
+          ]}
           onChange={changeFormat}
-        >
-          {!preset && (
-            <option value="custom">
-              Custom · {settings.width}×{settings.height}
-            </option>
-          )}
-          {FORMAT_PRESETS.map((p) => (
-            <option key={p.label} value={p.label}>
-              {p.label}
-            </option>
-          ))}
-        </Select>
+        />
         <IconButton
           icon="safe"
           title="Safe areas"

@@ -106,6 +106,29 @@ describe("karaokeAt", () => {
     expect(karaokeAt(clip, 11.5)).toEqual({ index: 1, fraction: 0.5 });
     expect(karaokeAt(clip, 14)).toEqual({ index: 3, fraction: 1 });
   });
+
+  const spoken = {
+    ...createTextClip({ id: "t", trackId: "T1", start: 10, text: "one two three" }),
+    duration: 4,
+    words: [
+      { text: "one", start: 0, end: 0.5 },
+      { text: "two", start: 1, end: 1.2 },
+      { text: "three", start: 2, end: 3 },
+    ],
+  };
+
+  it("follows real word timings when the title has them", () => {
+    expect(karaokeAt(spoken, 9.9)).toEqual({ index: -1, fraction: 0 });
+    expect(karaokeAt(spoken, 10.25)).toEqual({ index: 0, fraction: 0.5 });
+    expect(karaokeAt(spoken, 10.7)).toEqual({ index: 0, fraction: 1 });
+    expect(karaokeAt(spoken, 11.1)).toEqual({ index: 1, fraction: 0.5 });
+    expect(karaokeAt(spoken, 13.5)).toEqual({ index: 2, fraction: 1 });
+  });
+
+  it("falls back to even timing once the text no longer matches its words", () => {
+    const edited = { ...spoken, text: "one two three four" };
+    expect(karaokeAt(edited, 11.5)).toEqual({ index: 1, fraction: 0.5 });
+  });
 });
 
 describe("text style migration", () => {

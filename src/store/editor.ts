@@ -13,6 +13,8 @@ export interface EditorState {
   selection: Id[];
   /** Clip whose incoming transition is selected (mutually exclusive with `selection`). */
   focusedTransition: Id | null;
+  /** Title being edited inline on the program monitor. */
+  editingText: Id | null;
   playhead: number;
   playing: boolean;
   pxPerSecond: number;
@@ -27,6 +29,8 @@ export interface EditorState {
   load: (project: Project) => void;
   select: (ids: Id[]) => void;
   focusTransition: (clipId: Id) => void;
+  /** Starts (or, with null, ends) inline editing of a title. */
+  editText: (clipId: Id | null) => void;
   setPlayhead: (t: number) => void;
   setPlaying: (playing: boolean) => void;
   setView: (
@@ -47,12 +51,13 @@ export function createEditorStore(initial: Project): EditorStore {
       project: Project,
       history: Pick<EditorState, "past" | "future" | "coalesceKey">,
     ) => {
-      const focused = get().focusedTransition;
+      const { focusedTransition: focused, editingText: editing } = get();
       set({
         project,
         ...history,
         selection: existing(project, get().selection),
         focusedTransition: focused && focused in project.clips ? focused : null,
+        editingText: editing && project.clips[editing]?.type === "text" ? editing : null,
       });
     };
 
@@ -63,6 +68,7 @@ export function createEditorStore(initial: Project): EditorStore {
       coalesceKey: null,
       selection: [],
       focusedTransition: null,
+      editingText: null,
       playhead: 0,
       playing: false,
       pxPerSecond: 40,
@@ -118,10 +124,20 @@ export function createEditorStore(initial: Project): EditorStore {
         set({ selection: [], focusedTransition: clipId, coalesceKey: null });
       },
 
+      editText(clipId) {
+        if (clipId === null) return set({ editingText: null });
+        if (get().project.clips[clipId]?.type !== "text") {
+          throw new Error("Only titles can be edited inline");
+        }
+        set({ editingText: clipId, selection: [clipId], focusedTransition: null });
+      },
+
       select(ids) {
+        const editing = get().editingText;
         set({
           selection: existing(get().project, ids),
           focusedTransition: null,
+          editingText: ids.length === 1 && ids[0] === editing ? editing : null,
           coalesceKey: null,
         });
       },

@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it } from "vite-plus/test";
-import { emptyProject, videoAsset, videoClip, withClips } from "../core/fixtures.test-utils";
+import {
+  emptyProject,
+  textClip,
+  videoAsset,
+  videoClip,
+  withClips,
+} from "../core/fixtures.test-utils";
 import { createEditorStore, type EditorStore } from "./editor";
 
 let store: EditorStore;
@@ -86,5 +92,40 @@ describe("transition focus", () => {
       return { ...p, clips };
     });
     expect(store.getState().focusedTransition).toBeNull();
+  });
+});
+
+describe("inline text editing", () => {
+  beforeEach(() => {
+    store = createEditorStore(withClips(emptyProject(), videoClip("a", 0, 4), textClip("t", 0, 4)));
+  });
+
+  it("edits a title and selects it", () => {
+    store.getState().editText("t");
+    expect(store.getState().editingText).toBe("t");
+    expect(store.getState().selection).toEqual(["t"]);
+  });
+
+  it("only edits titles", () => {
+    expect(() => store.getState().editText("a")).toThrow(/title/);
+  });
+
+  it("ends when the selection moves elsewhere or editing is closed", () => {
+    store.getState().editText("t");
+    store.getState().select(["a"]);
+    expect(store.getState().editingText).toBeNull();
+    store.getState().editText("t");
+    store.getState().editText(null);
+    expect(store.getState().editingText).toBeNull();
+    expect(store.getState().selection).toEqual(["t"]);
+  });
+
+  it("ends when the title disappears, e.g. on undo", () => {
+    store.getState().editText("t");
+    store.getState().commit((p) => {
+      const { t: _, ...clips } = p.clips;
+      return { ...p, clips };
+    });
+    expect(store.getState().editingText).toBeNull();
   });
 });

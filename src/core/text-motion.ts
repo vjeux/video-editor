@@ -132,9 +132,24 @@ export function unitDelta(
 export const textMotionLength = (motion: TextMotion, count: number): Seconds =>
   Math.max(0, count - 1) * motion.stagger + motion.duration;
 
-/** Which word is being "sung" at `t`: words share the clip's duration evenly. */
+/**
+ * Which word is being "sung" at `t`, and how far through it. Titles with
+ * word timings (auto-captions) follow them while they still match the text
+ * (index -1 before the first word); otherwise words share the clip evenly.
+ */
 export function karaokeAt(clip: TextClip, t: Seconds): { index: number; fraction: number } {
   const count = Math.max(1, segmentText(clip.text, "word").length);
+  const words = clip.words;
+  if (words && words.length === count) {
+    const local = t - clip.start;
+    const index = words.findLastIndex((w) => w.start <= local);
+    const word = words[index];
+    if (!word) return { index: -1, fraction: 0 };
+    const span = word.end - word.start;
+    const fraction = span > 0 ? clamp01((local - word.start) / span) : 1;
+    // Rounded so float noise in timeline seconds does not leak into the result.
+    return { index, fraction: Number(fraction.toPrecision(12)) };
+  }
   const progress = clamp01((t - clip.start) / clip.duration) * count;
   const index = Math.min(count - 1, Math.floor(progress));
   return { index, fraction: Math.min(1, progress - index) };

@@ -56,7 +56,15 @@ function withStart(clip: Clip, start: Seconds): Clip {
   if (clip.type === "media" && clip.speedRamp) return bakeRamp(clip, start, clipEnd(clip));
   const delta = start - clip.start;
   const moved = { ...clip, start, duration: clip.duration - delta };
-  return moved.type === "media" ? { ...moved, offset: moved.offset + delta * rate(clip) } : moved;
+  if (moved.type === "media") return { ...moved, offset: moved.offset + delta * rate(clip) };
+  // Word timings are relative to the start; the words themselves stay put.
+  if (moved.type === "text" && moved.words) {
+    return {
+      ...moved,
+      words: moved.words.map((w) => ({ ...w, start: w.start - delta, end: w.end - delta })),
+    };
+  }
+  return moved;
 }
 
 const withEnd = (clip: Clip, end: Seconds): Clip =>
@@ -331,4 +339,30 @@ export function insertGap(project: Project, trackId: Id, at: Seconds, duration: 
     .filter((c) => c.start >= at - EPSILON)
     .map((c) => ({ ...c, start: c.start + duration }));
   return setClips(project, [], moved);
+}
+
+/** Strips binary floating point noise such as 3.5000000000000004. */
+const clean = (t: number) => Number(t.toPrecision(12));
+const BISECTION_STEPS = 40;
+
+/**
+ * The timeline time at which `clip` plays source time `sourceTime`: the
+ * inverse of its speed (and ramp) mapping; null outside its source range.
+ */
+export function timelineTimeOf(clip: MediaClip, sourceTime: Seconds): Seconds | null {
+  const end = clip.start + clip.duration;
+  const from = sourceTimeAt(clip, clip.start);
+  const to = sourceTimeAt(clip, end);
+  const eps = 1e-9;
+  if (sourceTime < from - eps || sourceTime > to + eps) return null;
+  if (!clip.speedRamp) return clean(clip.start + (sourceTime - clip.offset) / clip.speed);
+  // Ramps are monotonic, so bisection finds the moment that source plays.
+  let lo = clip.start;
+  let hi = end;
+  for (let i = 0; i < BISECTION_STEPS; i++) {
+    const mid = (lo + hi) / 2;
+    if (sourceTimeAt(clip, mid) < sourceTime) lo = mid;
+    else hi = mid;
+  }
+  return (lo + hi) / 2;
 }

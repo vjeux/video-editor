@@ -28,7 +28,7 @@ const CLIP_DEFAULTS: Raw = {
 /** Extra fields per clip type, applied beneath the clip's own values. */
 const TYPE_DEFAULTS: Record<string, Raw> = {
   media: { speedRamp: null, audioEffects: [] },
-  text: { textMotion: null, karaoke: null },
+  text: { textMotion: null, karaoke: null, words: null },
   adjustment: {},
 };
 

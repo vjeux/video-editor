@@ -1,24 +1,13 @@
 import * as stylex from "@stylexjs/stylex";
 import { updateClip } from "../../app/commands";
 import type { TextClip } from "../../core/types";
+import { ColorInput } from "../controls/ColorInput";
 import { NumberField } from "../controls/NumberField";
 import { Row } from "../controls/Row";
 import { Toggle } from "../controls/Toggle";
-import { colors, radii } from "../theme/tokens.stylex";
 
 const styles = stylex.create({
   controls: { display: "flex", alignItems: "center", gap: 8, minWidth: 0 },
-  color: {
-    width: 28,
-    height: 22,
-    padding: 0,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    borderStyle: "solid",
-    borderColor: colors.line,
-    backgroundColor: colors.bg,
-    cursor: "pointer",
-  },
   width: { width: 56 },
 });
 
@@ -43,12 +32,10 @@ export function OutlineRow({ clip }: { clip: TextClip }) {
         />
         {stroke && (
           <>
-            <input
-              type="color"
-              aria-label="Outline colour"
+            <ColorInput
+              label="Outline colour"
               value={stroke.color}
-              onChange={(e) => set({ ...stroke, color: e.target.value }, `stroke-color:${clip.id}`)}
-              {...stylex.props(styles.color)}
+              onChange={(color) => set({ ...stroke, color }, `stroke-color:${clip.id}`)}
             />
             <div {...stylex.props(styles.width)}>
               <NumberField

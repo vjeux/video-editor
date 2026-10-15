@@ -56,18 +56,13 @@ export function ProjectInspector() {
           <Select
             label="Format preset"
             value=""
+            placeholder="Choose a format…"
+            options={FORMAT_PRESETS.map((p) => ({ value: p.label, label: p.label }))}
             onChange={(label) => {
               const preset = FORMAT_PRESETS.find((p) => p.label === label);
               if (preset) setSettings({ width: preset.width, height: preset.height });
             }}
-          >
-            <option value="" disabled>
-              Choose a format…
-            </option>
-            {FORMAT_PRESETS.map((p) => (
-              <option key={p.label}>{p.label}</option>
-            ))}
-          </Select>
+          />
         </Row>
         <Row label="Frame rate" wide>
           <Segmented

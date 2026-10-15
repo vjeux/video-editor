@@ -35,7 +35,7 @@ import {
   trimClip,
   visualLayers,
 } from "./timeline";
-import type { MediaClip, Project } from "./types";
+import type { MediaClip, Project, TextClip } from "./types";
 
 const ids = () => sequentialIds("new");
 
@@ -472,5 +472,21 @@ describe("insertGap", () => {
       { id: "b", start: 5.5, duration: 4 },
     ]);
     expect(clipsOn(project, "T1")).toEqual([{ id: "t", start: 5, duration: 1 }]);
+  });
+});
+
+describe("caption word timings", () => {
+  it("move with the content when a title is split", () => {
+    const words = [
+      { text: "a", start: 0, end: 1 },
+      { text: "b", start: 2, end: 3 },
+    ];
+    const title = { ...(textClip("t", 0, 4) as TextClip), text: "a b", words };
+    const project = splitClip(withClips(emptyProject(), title), "t", 1.5, sequentialIds("s"));
+    expect((project.clips.t as TextClip).words).toEqual(words);
+    expect((project.clips["s-1"] as TextClip).words).toEqual([
+      { text: "a", start: -1.5, end: -0.5 },
+      { text: "b", start: 0.5, end: 1.5 },
+    ]);
   });
 });

@@ -1,12 +1,26 @@
 import * as stylex from "@stylexjs/stylex";
 import type { PointerEvent as ReactPointerEvent } from "react";
+import {
+  removeAudioEffectFrom,
+  reorderAudioEffect,
+  toggleAudioEffect,
+} from "../../app/audio-effects";
+import { removeEffectFrom, reorderEffect, toggleEffect } from "../../app/effects";
+import { AUDIO_EFFECTS } from "../../core/audio-effects";
 import { timeToX } from "../../core/layout";
-import { clipKind } from "../../core/timeline";
+import { transitionWindow } from "../../core/layers";
+import { clipEnd, clipKind, clipsOnTrack } from "../../core/timeline";
 import type { Clip, Project } from "../../core/types";
 import { useEditor } from "../../store";
+import { useSilences } from "../../store/silences";
 import { colors, fonts } from "../theme/tokens.stylex";
+import { AnimationCap } from "./AnimationCap";
+import { capLabel } from "./cap-label";
 import { ClipArt } from "./ClipArt";
-import { effectNames } from "./effect-names";
+import { effectChipMenu, type ChipActions } from "./effect-chip-menu";
+import { EffectChips, type ChipItem } from "./EffectChips";
+import { effectName, effectNames } from "./effect-names";
+import { LoopBadge } from "./LoopBadge";
 import { LANE_HEIGHT, type Viewport } from "./lanes";
 
 export type ClipEdge = "start" | "end";
@@ -26,6 +40,8 @@ const styles = stylex.create({
     filter: { default: null, ":hover": "brightness(1.12)" },
   },
   at: (left: number, width: number) => ({ left, width }),
+  /** Starts the label after an incoming transition's half of the overlap. */
+  inset: (left: number) => ({ left }),
   blade: { cursor: "crosshair" },
   selected: {
     boxShadow: `inset 0 0 0 2px ${colors.accent}, inset 0 0 0 3.5px #fff`,
@@ -77,21 +93,6 @@ const styles = stylex.create({
   titleGlyph: { fontFamily: fonts.mono, opacity: 0.7, marginInlineEnd: 6 },
   adjustmentName: { color: "#9ff0e6", marginInlineEnd: 6 },
   adjustmentEffects: { opacity: 0.75, fontWeight: 450 },
-  fx: {
-    fontFamily: fonts.mono,
-    fontSize: 9,
-    fontWeight: 700,
-    fontStyle: "italic",
-    lineHeight: "12px",
-    marginInlineEnd: 5,
-    paddingBlock: 0,
-    paddingInline: 3,
-    borderRadius: 3,
-    color: "#1a1030",
-    backgroundColor: colors.accent2,
-    pointerEvents: "auto",
-    cursor: "help",
-  },
   fade: {
     position: "absolute",
     top: 0,
@@ -108,14 +109,6 @@ const styles = stylex.create({
     backgroundImage: "linear-gradient(to bottom left, rgba(0, 0, 0, 0.45) 50%, transparent 50%)",
   },
   fadeWidth: (width: number) => ({ width }),
-  animationIn: {
-    left: 0,
-    backgroundImage: "linear-gradient(to top left, rgba(169, 157, 255, 0.4) 50%, transparent 50%)",
-  },
-  animationOut: {
-    right: 0,
-    backgroundImage: "linear-gradient(to top right, rgba(169, 157, 255, 0.4) 50%, transparent 50%)",
-  },
   speed: {
     position: "absolute",
     right: 5,
@@ -165,7 +158,59 @@ const styles = stylex.create({
     },
   },
   barSelected: { opacity: 1 },
+  /** A pause that silence removal would cut. */
+  silence: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    zIndex: 2,
+    pointerEvents: "none",
+    backgroundColor: "rgba(255, 93, 108, 0.28)",
+    backgroundImage:
+      "repeating-linear-gradient(135deg, rgba(255, 93, 108, 0.45) 0 4px, transparent 4px 9px)",
+    boxShadow: "inset 1px 0 0 rgba(255, 93, 108, 0.9), inset -1px 0 0 rgba(255, 93, 108, 0.9)",
+  },
+  span: (left: number, width: number) => ({ left, width }),
 });
+
+/** Clips shorter than this have no room for the chip strip under their label. */
+const CHIPS_MIN_HEIGHT = 36;
+
+/**
+ * The effect stack a clip shows as chips: audio clips show their audio
+ * chain, everything else its visual effects, each bound to its commands.
+ */
+function chipsFor(project: Project, clip: Clip, audio: boolean) {
+  if (audio && clip.type === "media") {
+    const stack = clip.audioEffects;
+    return {
+      items: stack.map((e): ChipItem => ({
+        id: e.id,
+        name: AUDIO_EFFECTS[e.effectId]?.name ?? e.effectId,
+        enabled: e.enabled,
+      })),
+      toggle: (id: string, enabled: boolean) => toggleAudioEffect(clip.id, id, enabled),
+      actions: (id: string): ChipActions => ({
+        toggle: (enabled) => toggleAudioEffect(clip.id, id, enabled),
+        move: (index) => reorderAudioEffect(clip.id, id, index),
+        remove: () => removeAudioEffectFrom(clip.id, id),
+      }),
+    };
+  }
+  return {
+    items: clip.effects.map((e): ChipItem => ({
+      id: e.id,
+      name: effectName(project, e.effectId),
+      enabled: e.enabled,
+    })),
+    toggle: (id: string, enabled: boolean) => toggleEffect(clip.id, id, enabled),
+    actions: (id: string): ChipActions => ({
+      toggle: (enabled) => toggleEffect(clip.id, id, enabled),
+      move: (index) => reorderEffect(clip.id, id, index),
+      remove: () => removeEffectFrom(clip.id, id),
+    }),
+  };
+}
 
 export function ClipView({
   clip,
@@ -188,6 +233,8 @@ export function ClipView({
   onPointerDown: (e: ReactPointerEvent, clip: Clip, edge: ClipEdge | null) => void;
 }) {
   const pps = useEditor((s) => s.pxPerSecond);
+  const select = useEditor((s) => s.select);
+  const silences = useSilences((s) => (s.preview?.clipId === clip.id ? s.preview.spans : null));
   const blade = useEditor((s) => s.tool === "blade");
   const track = project.tracks.find((t) => t.id === clip.trackId);
   const kind = clipKind(project, clip);
@@ -201,8 +248,20 @@ export function ClipView({
       : clip.type === "adjustment"
         ? effectNames(project, clip.effects).join(", ")
         : (asset?.name ?? "Missing media");
-  const enabledEffects = clip.type === "adjustment" ? [] : clip.effects.filter((e) => e.enabled);
-  const rampWidth = (seconds: number) => timeToX(Math.min(seconds, clip.duration), pps);
+  const locked = track?.locked ?? false;
+  // Transitions cover half their window on each side of a cut; keep labels clear of them.
+  const coveredIn = timeToX(transitionWindow(project, clip)?.duration ?? 0, pps) / 2;
+  const next = clipsOnTrack(project, clip.trackId).find(
+    (c) => c.id !== clip.id && Math.abs(c.start - clipEnd(clip)) < 1e-6,
+  );
+  const coveredOut = next ? timeToX(transitionWindow(project, next)?.duration ?? 0, pps) / 2 : 0;
+  const inset = 6 + coveredIn;
+  // Effect chips share the bottom row with the animation caps' labels.
+  const capIn = capLabel(clip, "in", pps);
+  const capOut = capLabel(clip, "out", pps);
+  const chipsFrom = inset + (capIn ? capIn.width + 4 : 0);
+  const chipsTo = width - 6 - coveredOut - (capOut ? capOut.width + 4 : 0);
+  const chips = chipsFor(project, clip, kind === "audio");
   const art =
     clip.type !== "media"
       ? null
@@ -240,18 +299,10 @@ export function ClipView({
         />
       )}
       {(kind === "video" || kind === "image") && <span {...stylex.props(styles.shade)} />}
-      <span {...stylex.props(styles.label)}>
+      <span {...stylex.props(styles.label, styles.inset(inset))}>
         {clip.type === "text" && <span {...stylex.props(styles.titleGlyph)}>T</span>}
         {clip.type === "adjustment" && (
           <span {...stylex.props(styles.adjustmentName)}>Adjustment</span>
-        )}
-        {enabledEffects.length > 0 && (
-          <span
-            title={`Effects: ${effectNames(project, enabledEffects).join(", ")}`}
-            {...stylex.props(styles.fx)}
-          >
-            fx
-          </span>
         )}
         <span {...stylex.props(clip.type === "adjustment" && styles.adjustmentEffects)}>
           {label}
@@ -271,24 +322,53 @@ export function ClipView({
           )}
         />
       )}
-      {clip.animationIn && (
-        <span
-          {...stylex.props(
-            styles.fade,
-            styles.animationIn,
-            styles.fadeWidth(rampWidth(clip.animationIn.duration)),
-          )}
+      <AnimationCap
+        clip={clip}
+        which="in"
+        pps={pps}
+        height={height}
+        edgeInset={coveredIn}
+        locked={locked}
+      />
+      <AnimationCap
+        clip={clip}
+        which="out"
+        pps={pps}
+        height={height}
+        edgeInset={coveredOut}
+        locked={locked}
+      />
+      <LoopBadge clip={clip} locked={locked} />
+      {height >= CHIPS_MIN_HEIGHT && chips.items.length > 0 && (
+        <EffectChips
+          items={chips.items}
+          width={chipsTo - chipsFrom}
+          inset={chipsFrom}
+          onToggle={chips.toggle}
+          menuFor={(id, index) =>
+            effectChipMenu(
+              chips.items[index]?.enabled ?? true,
+              index,
+              chips.items.length,
+              chips.actions(id),
+              locked,
+            )
+          }
+          onMore={() => select([clip.id])}
         />
       )}
-      {clip.animationOut && (
+      {silences?.map((span) => (
         <span
+          key={span.start}
           {...stylex.props(
-            styles.fade,
-            styles.animationOut,
-            styles.fadeWidth(rampWidth(clip.animationOut.duration)),
+            styles.silence,
+            styles.span(
+              timeToX(span.start - clip.start, pps),
+              Math.max(1, timeToX(span.end - span.start, pps)),
+            ),
           )}
         />
-      )}
+      ))}
       {clip.type === "media" && clip.speed !== 1 && (
         <span {...stylex.props(styles.speed)}>{clip.speed}×</span>
       )}

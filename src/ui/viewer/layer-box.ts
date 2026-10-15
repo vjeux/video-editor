@@ -1,5 +1,5 @@
-import type { Clip, Project } from "../../core/types";
-import { layerSize } from "../../engine/compositor";
+import type { Clip, Project, TextClip } from "../../core/types";
+import { layerSize, layoutText, type TextLayout } from "../../engine/compositor";
 
 /** A layer's oriented bounding box, in project pixels. */
 export interface Box {
@@ -37,6 +37,12 @@ export function boxOf(project: Project, clip: Clip, _fontsVersion = 0): Box | nu
     height: size.height * scale,
     rotation,
   };
+}
+
+/** A title's text layout (lines, padding, line height) in project pixels. */
+export function textLayoutOf(clip: TextClip): TextLayout {
+  if (!measureCtx) throw new Error("Text cannot be measured without a 2D canvas");
+  return layoutText(measureCtx, clip);
 }
 
 export function contains(box: Box, px: number, py: number) {

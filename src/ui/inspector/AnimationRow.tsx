@@ -37,18 +37,18 @@ export function AnimationRow({ clip, which }: { clip: Clip; which: "in" | "out" 
   return (
     <div role="group" aria-label={`${label} animation`} {...stylex.props(styles.row)}>
       <Row label={label} wide>
-        <Select label={`${label} animation`} value={animation?.presetId ?? ""} onChange={pick}>
-          <option value="">None</option>
-          {ANIMATION_GROUPS[which].map((g) => (
-            <optgroup key={g.label} label={g.label}>
-              {g.presets.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </Select>
+        <Select
+          label={`${label} animation`}
+          value={animation?.presetId ?? ""}
+          options={[
+            { value: "", label: "None" },
+            ...ANIMATION_GROUPS[which].map((g) => ({
+              group: g.label,
+              options: g.presets.map((p) => ({ value: p.id, label: p.name })),
+            })),
+          ]}
+          onChange={pick}
+        />
       </Row>
       {animation && (
         <>
@@ -66,17 +66,9 @@ export function AnimationRow({ clip, which }: { clip: Clip; which: "in" | "out" 
               <Select
                 label={`${label} easing`}
                 value={animation.easing}
-                onChange={(v) => {
-                  const easing = EASINGS.find((e) => e === v);
-                  if (easing) set({ ...animation, easing });
-                }}
-              >
-                {EASINGS.map((e) => (
-                  <option key={e} value={e}>
-                    {EASING_LABELS[e]}
-                  </option>
-                ))}
-              </Select>
+                options={EASINGS.map((e) => ({ value: e, label: EASING_LABELS[e] }))}
+                onChange={(easing) => set({ ...animation, easing })}
+              />
             </Row>
           )}
         </>

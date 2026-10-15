@@ -134,6 +134,44 @@ export const ICONS = {
   alignLeft: stroke(<path d="M4 6h16M4 10h10M4 14h16M4 18h10" />),
   alignCenter: stroke(<path d="M4 6h16M7 10h10M4 14h16M7 18h10" />),
   alignRight: stroke(<path d="M4 6h16M10 10h10M4 14h16M10 18h10" />),
+  chevronDown: stroke(<path d="M6 9l6 6 6-6" />),
+  chevronRight: stroke(<path d="M9 6l6 6-6 6" />),
+  copy: stroke(
+    <>
+      <rect x="9" y="9" width="12" height="12" rx="2" />
+      <path d="M5 15H4a1 1 0 01-1-1V4a1 1 0 011-1h10a1 1 0 011 1v1" />
+    </>,
+  ),
+  paste: stroke(
+    <>
+      <path d="M9 4H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-3" />
+      <rect x="9" y="2" width="6" height="4" rx="1" />
+    </>,
+  ),
+  duplicate: stroke(
+    <>
+      <rect x="8" y="8" width="13" height="13" rx="2" />
+      <path d="M4 16V5a1 1 0 011-1h11M14.5 11.5v6M11.5 14.5h6" />
+    </>,
+  ),
+  toPlayhead: stroke(<path d="M20 4v16M4 12h12M12 8l4 4-4 4" />),
+  reset: stroke(
+    <>
+      <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8" />
+      <path d="M3 3v5h5" />
+    </>,
+  ),
+  transition: stroke(
+    <>
+      <rect x="2" y="6" width="12" height="12" rx="2" />
+      <path d="M18 6h2a2 2 0 012 2v8a2 2 0 01-2 2h-2" strokeDasharray="2.5 2.5" />
+    </>,
+  ),
+  layers: stroke(<path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5M3 17.5l9 5 9-5" />),
+  freeze: stroke(<path d="M12 2v20M4.5 6.5l15 11M19.5 6.5l-15 11M9 4l3 2 3-2M9 20l3-2 3 2" />),
+  track: stroke(<path d="M3 6h18M3 12h18M3 18h18" />),
 } as const;
 
 export type IconName = keyof typeof ICONS;
+
+export const isIconName = (name: string): name is IconName => Object.hasOwn(ICONS, name);

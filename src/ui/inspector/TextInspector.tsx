@@ -62,25 +62,15 @@ export function TextInspector({ clip }: { clip: TextClip }) {
           <Select
             label="Font"
             value={style.fontFamily}
+            options={FONTS.map((f) => ({ value: f.family, label: f.label, font: f.family }))}
             onChange={(fontFamily) => setStyle({ fontFamily })}
-          >
-            {FONTS.map((f) => (
-              <option key={f.family} value={f.family}>
-                {f.label}
-              </option>
-            ))}
-          </Select>
+          />
           <Select
             label="Weight"
-            value={style.fontWeight}
+            value={String(style.fontWeight)}
+            options={WEIGHTS.map((w) => ({ value: String(w.value), label: w.label }))}
             onChange={(v) => setStyle({ fontWeight: Number(v) })}
-          >
-            {WEIGHTS.map((w) => (
-              <option key={w.value} value={w.value}>
-                {w.label}
-              </option>
-            ))}
-          </Select>
+          />
         </div>
         <SliderRow
           label="Size"

@@ -11,15 +11,12 @@ export function SpeedRampRow({ clip }: { clip: MediaClip }) {
       <Select
         label="Speed ramp"
         value={clip.speedRamp ?? ""}
+        options={[
+          { value: "", label: "None (constant)" },
+          ...Object.values(SPEED_RAMPS).map((ramp) => ({ value: ramp.id, label: ramp.name })),
+        ]}
         onChange={(id) => setSpeedRamp(clip.id, id || null)}
-      >
-        <option value="">None (constant)</option>
-        {Object.values(SPEED_RAMPS).map((ramp) => (
-          <option key={ramp.id} value={ramp.id}>
-            {ramp.name}
-          </option>
-        ))}
-      </Select>
+      />
     </Row>
   );
 }
