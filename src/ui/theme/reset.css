@@ -49,3 +49,43 @@
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/* View transitions (React <ViewTransition>): animate only what opts in. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+::view-transition-new(.dialog-enter):only-child {
+  animation: vt-dialog-in 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+::view-transition-old(.dialog-exit):only-child {
+  animation: vt-dialog-out 140ms ease-in forwards;
+}
+::view-transition-new(.fade-in):only-child {
+  animation: vt-fade-in 260ms ease-out;
+}
+::view-transition-old(.fade-out):only-child {
+  animation: vt-fade-out 200ms ease-in forwards;
+}
+@keyframes vt-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+@keyframes vt-dialog-out {
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}

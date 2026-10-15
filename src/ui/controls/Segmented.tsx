@@ -27,8 +27,12 @@ const styles = stylex.create({
     whiteSpace: "nowrap",
     overflow: "hidden",
     textOverflow: "ellipsis",
-    cursor: "pointer",
-    color: { default: colors.muted, ":hover": colors.text },
+    cursor: { default: "pointer", ":disabled": "not-allowed" },
+    color: {
+      default: colors.muted,
+      ":hover:not(:disabled)": colors.text,
+      ":disabled": colors.faint,
+    },
     backgroundColor: "transparent",
   },
   compact: { fontSize: 10.5, paddingInline: 2 },
@@ -43,7 +47,7 @@ export function Segmented<T extends string>({
   compact,
 }: {
   value: T;
-  options: readonly { value: T; label: ReactNode; title?: string }[];
+  options: readonly { value: T; label: ReactNode; title?: string; disabled?: boolean }[];
   onChange: (value: T) => void;
   label: string;
   /** Tighter options for long rows such as speed presets. */
@@ -58,6 +62,7 @@ export function Segmented<T extends string>({
           role="radio"
           aria-checked={o.value === value}
           title={o.title}
+          disabled={o.disabled}
           onClick={() => onChange(o.value)}
           {...stylex.props(
             styles.option,

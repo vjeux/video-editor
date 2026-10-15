@@ -1,11 +1,10 @@
 import * as stylex from "@stylexjs/stylex";
-import { useEffect, useRef, useState } from "react";
+import { startTransition, Suspense, useActionState, useRef, useState } from "react";
 import { media } from "../../app/engine";
 import { reportError } from "../../app/errors";
 import { formatTimecode } from "../../core/time";
 import { projectDuration } from "../../core/timeline";
 import {
-  EXPORT_FORMATS,
   exportFileName,
   exportProject,
   type ExportFormat,
@@ -20,11 +19,7 @@ import { Dialog } from "./Dialog";
 import { DialogField } from "./DialogField";
 import { ExportProgress } from "./ExportProgress";
 import { ExportSummary } from "./ExportSummary";
-
-const FORMAT_OPTIONS = (Object.keys(EXPORT_FORMATS) as ExportFormat[]).map((f) => ({
-  value: f,
-  label: EXPORT_FORMATS[f].label,
-}));
+import { FormatPicker } from "./FormatPicker";
 
 const QUALITY_OPTIONS: readonly { value: ExportQuality; label: string }[] = [
   { value: "low", label: "Low" },
@@ -33,10 +28,20 @@ const QUALITY_OPTIONS: readonly { value: ExportQuality; label: string }[] = [
   { value: "very-high", label: "Max" },
 ];
 
-type Phase =
-  | { kind: "setup" }
-  | { kind: "running"; progress: number; eta: number | null }
+type Result =
+  | { kind: "idle" }
   | { kind: "done"; url: string; size: number; filename: string; seconds: number };
+
+type Command =
+  | { type: "export"; format: ExportFormat; quality: ExportQuality; height: number }
+  | { type: "reset" };
+
+interface Progress {
+  progress: number;
+  eta: number | null;
+}
+
+const IDLE: Result = { kind: "idle" };
 
 const formatBytes = (bytes: number) =>
   bytes > 1e9 ? `${(bytes / 1e9).toFixed(2)} GB` : `${(bytes / 1e6).toFixed(1)} MB`;
@@ -57,70 +62,81 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
   const duration = useEditor((s) => projectDuration(s.project));
   const [format, setFormat] = useState<ExportFormat>("mp4");
   const [quality, setQuality] = useState<ExportQuality>("high");
-  const [height, setHeight] = useState(settings.height);
-  const [phase, setPhase] = useState<Phase>({ kind: "setup" });
+  const [chosenHeight, setHeight] = useState<number | null>(null);
+  const [progress, setProgress] = useState<Progress>({ progress: 0, eta: null });
   const abort = useRef<AbortController | null>(null);
+  const height = chosenHeight ?? settings.height;
 
+  /**
+   * The export is a React action: `exporting` is its pending flag, progress
+   * streams in through plain state updates, and the result (or reset) is the
+   * action state. No unmount abort: when the dialog is hidden by <Activity>
+   * the export keeps running in the background.
+   */
+  const [result, dispatch, exporting] = useActionState<Result, Command>(
+    async (previous, command) => {
+      if (previous.kind === "done") URL.revokeObjectURL(previous.url);
+      if (command.type === "reset") return IDLE;
+      const controller = new AbortController();
+      abort.current = controller;
+      const startedAt = performance.now();
+      setProgress({ progress: 0, eta: null });
+      const project = editorStore.getState().project;
+      try {
+        const blob = await exportProject(project, media, {
+          ...command,
+          signal: controller.signal,
+          onProgress: (p) => {
+            const elapsed = (performance.now() - startedAt) / 1000;
+            setProgress({ progress: p, eta: p > 0.02 ? elapsed * ((1 - p) / p) : null });
+          },
+        });
+        return {
+          kind: "done",
+          url: URL.createObjectURL(blob),
+          size: blob.size,
+          filename: exportFileName(project, command.format),
+          seconds: (performance.now() - startedAt) / 1000,
+        };
+      } catch (error) {
+        reportError(error);
+        return IDLE;
+      }
+    },
+    IDLE,
+  );
+
+  const run = (command: Command) => startTransition(() => dispatch(command));
   const heights = [...new Set([settings.height, 2160, 1440, 1080, 720, 480])]
     .filter((h) => h <= Math.max(settings.height, 2160))
     .sort((a, b) => b - a);
   const width = (h: number) => Math.round(((settings.width / settings.height) * h) / 2) * 2;
 
-  useEffect(() => () => abort.current?.abort(), []);
-
-  const resultUrl = phase.kind === "done" ? phase.url : null;
-  useEffect(() => (resultUrl ? () => URL.revokeObjectURL(resultUrl) : undefined), [resultUrl]);
-
-  const start = async () => {
-    const controller = new AbortController();
-    abort.current = controller;
-    const startedAt = performance.now();
-    setPhase({ kind: "running", progress: 0, eta: null });
-    try {
-      const project = editorStore.getState().project;
-      const blob = await exportProject(project, media, {
-        format,
-        quality,
-        height,
-        signal: controller.signal,
-        onProgress: (progress) => {
-          const elapsed = (performance.now() - startedAt) / 1000;
-          const eta = progress > 0.02 ? elapsed * ((1 - progress) / progress) : null;
-          setPhase({ kind: "running", progress, eta });
-        },
-      });
-      setPhase({
-        kind: "done",
-        url: URL.createObjectURL(blob),
-        size: blob.size,
-        filename: exportFileName(project, format),
-        seconds: (performance.now() - startedAt) / 1000,
-      });
-    } catch (error) {
-      setPhase({ kind: "setup" });
-      reportError(error);
-    }
-  };
-
-  const running = phase.kind === "running";
-  const cancel = () => abort.current?.abort();
-
   const footer =
-    phase.kind === "done" ? (
+    result.kind === "done" ? (
       <>
-        <Button onClick={() => setPhase({ kind: "setup" })}>Export again</Button>
-        <Button variant="primary" href={phase.url} download={phase.filename}>
+        <Button onClick={() => run({ type: "reset" })}>Export again</Button>
+        <Button variant="primary" href={result.url} download={result.filename}>
           Download
         </Button>
       </>
-    ) : running ? (
-      <Button variant="danger" onClick={cancel}>
-        Cancel
-      </Button>
+    ) : exporting ? (
+      <>
+        <Button onClick={onClose} title="Keep exporting in the background">
+          Hide
+        </Button>
+        <Button variant="danger" onClick={() => abort.current?.abort()}>
+          Cancel
+        </Button>
+      </>
     ) : (
       <>
         <Button onClick={onClose}>Close</Button>
-        <Button variant="primary" onClick={() => void start()} disabled={duration <= 0}>
+        <Button
+          variant="primary"
+          onClick={() => run({ type: "export", format, quality, height })}
+          disabled={duration <= 0}
+        >
           Export
         </Button>
       </>
@@ -129,8 +145,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
   return (
     <Dialog
       title="Export video"
-      onClose={running ? cancel : onClose}
-      dismissable={!running}
+      onClose={onClose}
       note="Powered by Mediabunny + WebCodecs"
       footer={footer}
     >
@@ -141,29 +156,28 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
           { label: "Frame rate", value: `${settings.fps} fps` },
         ]}
       />
-      {phase.kind === "done" ? (
+      {result.kind === "done" ? (
         <div {...stylex.props(styles.result)}>
-          <video src={phase.url} controls {...stylex.props(styles.video)} />
+          <video src={result.url} controls {...stylex.props(styles.video)} />
           <p {...stylex.props(styles.hint)}>
-            {formatBytes(phase.size)} · rendered in {phase.seconds.toFixed(1)}s, entirely on your
+            {formatBytes(result.size)} · rendered in {result.seconds.toFixed(1)}s, entirely on your
             device.
           </p>
         </div>
       ) : (
         <>
           <DialogField label="Format">
-            <Segmented
-              label="Format"
-              value={format}
-              options={FORMAT_OPTIONS}
-              onChange={setFormat}
-            />
+            <Suspense
+              fallback={<p {...stylex.props(styles.hint)}>Checking this browser's encoders…</p>}
+            >
+              <FormatPicker value={format} onChange={setFormat} />
+            </Suspense>
           </DialogField>
           <DialogField label="Resolution">
             <Select
               label="Resolution"
               value={height}
-              disabled={running}
+              disabled={exporting}
               onChange={(v) => setHeight(Number(v))}
             >
               {heights.map((h) => (
@@ -182,7 +196,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
               onChange={setQuality}
             />
           </DialogField>
-          {phase.kind === "running" && <ExportProgress progress={phase.progress} eta={phase.eta} />}
+          {exporting && <ExportProgress progress={progress.progress} eta={progress.eta} />}
         </>
       )}
     </Dialog>

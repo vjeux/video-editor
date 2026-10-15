@@ -217,5 +217,22 @@ export async function exportProject(
   return new Blob([buffer], { type: format.mimeType });
 }
 
+let encodable: Promise<Record<ExportFormat, boolean>> | null = null;
+
+/** Which formats this browser can encode at 1080p, probed once and cached for `use()`. */
+export function encodableFormats(): Promise<Record<ExportFormat, boolean>> {
+  encodable ??= Promise.all(
+    (Object.keys(EXPORT_FORMATS) as ExportFormat[]).map(async (key) => {
+      const format = EXPORT_FORMATS[key].create();
+      const codec = await getFirstEncodableVideoCodec(format.getSupportedVideoCodecs(), {
+        width: 1920,
+        height: 1080,
+      });
+      return [key, codec !== null] as const;
+    }),
+  ).then((entries) => Object.fromEntries(entries) as Record<ExportFormat, boolean>);
+  return encodable;
+}
+
 export const exportFileName = (project: Project, format: ExportFormat) =>
   `${project.name.replace(/[\\/:*?"<>|]+/g, "-").trim() || "export"}.${format}`;

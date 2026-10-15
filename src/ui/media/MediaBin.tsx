@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { useState } from "react";
+import { useDeferredValue, useState } from "react";
 import { useEditor, useMedia } from "../../store";
 import { PanelHeader } from "../controls/PanelHeader";
 import { colors } from "../theme/tokens.stylex";
@@ -55,7 +55,9 @@ export function MediaBin() {
   const used = new Set(
     Object.values(clips).flatMap((c) => (c.type === "media" ? [c.assetId] : [])),
   );
-  const visible = all.filter((a) => matchesMedia(a, filter, query));
+  // Typing stays responsive; filtering a large bin renders at lower priority.
+  const deferredQuery = useDeferredValue(query);
+  const visible = all.filter((a) => matchesMedia(a, filter, deferredQuery));
   const importing = known > all.length;
 
   return (

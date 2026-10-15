@@ -13,25 +13,32 @@ import { reportError } from "./errors";
 
 const AUTOSAVE_DELAY = 500;
 
-export async function restoreSession() {
+/**
+ * Loads the saved project, then reopens its media in the background (the
+ * bin shows each file's progress). Resolves once the project is in the store.
+ */
+async function restoreSession() {
   const saved = await loadProject();
   if (!saved) return;
   editorStore.getState().load(saved);
   sessionStore.setState({ savedAt: Date.now() });
 
   const referenced = new Set(Object.keys(saved.assets));
-  for (const id of await storedMediaIds()) {
-    if (!referenced.has(id)) void deleteMedia(id);
+  void storedMediaIds().then((ids) => {
+    for (const id of ids) if (!referenced.has(id)) void deleteMedia(id);
+  });
+  for (const asset of Object.values(saved.assets)) {
+    mediaStore.getState().patch(asset.id, { status: "loading" });
+    void loadMedia(asset.id).then((file) =>
+      file ? openAsset(asset, file) : mediaStore.getState().patch(asset.id, { status: "missing" }),
+    );
   }
-  await Promise.all(
-    Object.values(saved.assets).map(async (asset) => {
-      mediaStore.getState().patch(asset.id, { status: "loading" });
-      const file = await loadMedia(asset.id);
-      if (file) await openAsset(asset, file);
-      else mediaStore.getState().patch(asset.id, { status: "missing" });
-    }),
-  );
 }
+
+let restored: Promise<void> | null = null;
+
+/** One shared promise for `use()`: a failed restore still opens an empty editor. */
+export const sessionRestored = () => (restored ??= restoreSession().catch(reportError));
 
 export function startAutosave(): () => void {
   let timer = 0;

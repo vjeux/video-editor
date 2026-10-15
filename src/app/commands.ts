@@ -150,9 +150,13 @@ const isEditable = (target: EventTarget | null) =>
     target instanceof HTMLSelectElement ||
     (target instanceof HTMLInputElement && !NON_TEXT_INPUTS.has(target.type)));
 
+/** Editor shortcuts stand down while a modal dialog is visible (it owns the keyboard). */
+const modalOpen = () =>
+  [...document.querySelectorAll('[aria-modal="true"]')].some((el) => el.checkVisibility());
+
 export function installShortcuts(): () => void {
   const onKey = (event: KeyboardEvent) => {
-    if (isEditable(event.target)) return;
+    if (isEditable(event.target) || modalOpen()) return;
     const run = SHORTCUTS[shortcutKey(event)];
     if (!run) return;
     event.preventDefault();
