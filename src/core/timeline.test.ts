@@ -503,3 +503,15 @@ describe("clipsOnTrack memoisation", () => {
     expect(clipsOnTrack(project, "A1")).toEqual([]);
   });
 });
+
+describe("frameSourceTime at the end of high frame rate sources", () => {
+  it("stays within half a source frame of the end, so the last frame shows", () => {
+    const fast = { ...videoAsset, duration: 10, frameRate: 240 };
+    const project = {
+      ...withClips(emptyProject(), videoClip("v", 0, 10)),
+      assets: { [fast.id]: fast },
+    };
+    const t = frameSourceTime(project, project.clips.v as MediaClip, 10);
+    expect(t).toBeCloseTo(10 - 0.5 / 240, 9);
+  });
+});
