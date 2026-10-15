@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { startTransition, useActionState, useEffect, useId, useRef, useState } from "react";
 import { media } from "../../app/engine";
 import { reportError } from "../../app/errors";
-import { formatTimecode } from "../../core/time";
+import { formatFps, formatTimecode } from "../../core/time";
 import { projectDuration } from "../../core/timeline";
 import type { Project } from "../../core/types";
 import {
@@ -83,7 +83,7 @@ function outputDetails(project: Project, height: number, filename: string): Outp
     filename,
     resolution: `${w} × ${h}`,
     duration: formatTimecode(projectDuration(project), project.settings.fps),
-    frameRate: `${project.settings.fps} fps`,
+    frameRate: `${formatFps(project.settings.fps)} fps`,
   };
 }
 

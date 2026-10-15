@@ -31,10 +31,26 @@ export function canPlace(project: Project, kind: ClipKind, trackId: Id): boolean
   return !!track && !track.locked && TRACK_ACCEPTS[track.kind].includes(kind);
 }
 
-export function clipsOnTrack(project: Project, trackId: Id): Clip[] {
-  return Object.values(project.clips)
-    .filter((c) => c.trackId === trackId)
-    .sort((a, b) => a.start - b.start);
+const NO_CLIPS: readonly Clip[] = [];
+/** Per-track lists for each (immutable) clip map, built in one pass on first use. */
+const byTrack = new WeakMap<Project["clips"], Map<Id, readonly Clip[]>>();
+const durations = new WeakMap<Project["clips"], Seconds>();
+
+/** A track's clips in time order; the same clips always give the same list. */
+export function clipsOnTrack(project: Project, trackId: Id): readonly Clip[] {
+  let tracks = byTrack.get(project.clips);
+  if (!tracks) {
+    const grouped = new Map<Id, Clip[]>();
+    for (const clip of Object.values(project.clips)) {
+      const list = grouped.get(clip.trackId);
+      if (list) list.push(clip);
+      else grouped.set(clip.trackId, [clip]);
+    }
+    for (const list of grouped.values()) list.sort((a, b) => a.start - b.start);
+    tracks = grouped;
+    byTrack.set(project.clips, tracks);
+  }
+  return tracks.get(trackId) ?? NO_CLIPS;
 }
 
 /** Source seconds consumed per timeline second. Titles have no source. */
@@ -214,7 +230,12 @@ export function removeAsset(project: Project, assetId: Id): Project {
 }
 
 export function projectDuration(project: Project): Seconds {
-  return Math.max(0, ...Object.values(project.clips).map(clipEnd));
+  let duration = durations.get(project.clips);
+  if (duration === undefined) {
+    duration = Object.values(project.clips).reduce((end, clip) => Math.max(end, clipEnd(clip)), 0);
+    durations.set(project.clips, duration);
+  }
+  return duration;
 }
 
 export function trackEnd(project: Project, trackId: Id): Seconds {
@@ -320,7 +341,7 @@ export function fillScale(project: Project, clip: Clip): number {
   return cover / contain;
 }
 
-/** Last decodable instant of a source: a hair before its end. */
+/** Last decodable instant of a source: a hair before its end (half a frame when known). */
 const SOURCE_END_MARGIN = 1 / 120;
 
 /**
@@ -328,8 +349,12 @@ const SOURCE_END_MARGIN = 1 / 120;
  * (transitions extend both sides of a cut), clamped to the media.
  */
 export function frameSourceTime(project: Project, clip: MediaClip, t: Seconds): Seconds {
-  const duration = project.assets[clip.assetId]?.duration;
-  const end = duration == null ? Infinity : Math.max(0, duration - SOURCE_END_MARGIN);
+  const asset = project.assets[clip.assetId];
+  const duration = asset?.duration;
+  const margin = asset?.frameRate
+    ? Math.min(SOURCE_END_MARGIN, 0.5 / asset.frameRate)
+    : SOURCE_END_MARGIN;
+  const end = duration == null ? Infinity : Math.max(0, duration - margin);
   return Math.min(end, Math.max(0, sourceTimeAt(clip, t)));
 }
 

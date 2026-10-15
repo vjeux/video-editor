@@ -1,4 +1,6 @@
+import { frameStart } from "../core/time";
 import { projectDuration } from "../core/timeline";
+import { perf } from "../engine/perf";
 import { PreviewRenderer } from "../engine/preview";
 import { editorStore, mediaStore } from "../store";
 import { media, player } from "./engine";
@@ -57,7 +59,9 @@ export function attachViewer(canvas: HTMLCanvasElement): () => void {
 
     if (player.playing) {
       player.update(s.project);
-      t = player.time();
+      // Show the frame on screen at the audio clock: a 30 fps project composites
+      // 30 times a second whatever the display refresh, and matches export timing.
+      t = frameStart(player.time(), s.project.settings.fps);
       const end = projectDuration(s.project);
       if (t >= end) {
         player.pause();
@@ -69,7 +73,7 @@ export function attachViewer(canvas: HTMLCanvasElement): () => void {
           s.setPlaying(false);
         }
       }
-      s.setPlayhead(t);
+      if (t !== s.playhead) s.setPlayhead(t);
     }
 
     const changed =
@@ -88,7 +92,9 @@ export function attachViewer(canvas: HTMLCanvasElement): () => void {
       height: canvas.height,
       editing: s.editingText,
     };
+    const from = performance.now();
     preview.render(ctx, s.project, t, player.playing, s.editingText);
+    perf.composite(performance.now() - from);
   };
   tick();
 

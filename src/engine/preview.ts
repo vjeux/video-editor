@@ -1,4 +1,4 @@
-import { layerClips, layersAt } from "../core/layers";
+import { layerClips, layersAt, transitionWindow } from "../core/layers";
 import { frameSourceTime } from "../core/timeline";
 import type { Id, MediaClip, Project } from "../core/types";
 import { resolveEffect } from "../effects/resolve";
@@ -25,36 +25,48 @@ export class PreviewRenderer {
     this.gpu = createGpu(onError);
   }
 
-  private frame(clip: MediaClip, sourceTime: number): Drawable | null {
-    const image = this.media.image(clip.assetId);
-    if (image) return image;
+  /** The clip's frame stream, created on first use; marks it as still needed. */
+  private stream(clip: MediaClip): FrameStream | null {
     let entry = this.streams.get(clip.id);
     if (!entry || entry.assetId !== clip.assetId) {
       entry?.stream.dispose();
-      const sink = this.media.previewSink(clip.assetId);
+      const sink = this.media.createPreviewSink(clip.assetId);
       if (!sink) return null;
-      entry = { assetId: clip.assetId, stream: new FrameStream(sink, this.onFrame) };
+      const assetId = clip.assetId;
+      const stream = new FrameStream(sink, () => this.media.keyframes(assetId), this.onFrame);
+      entry = { assetId, stream };
       this.streams.set(clip.id, entry);
     }
     this.used.add(clip.id);
-    return entry.stream.frameAt(sourceTime);
+    return entry.stream;
+  }
+
+  private frame(clip: MediaClip, sourceTime: number, playing: boolean): Drawable | null {
+    return (
+      this.media.image(clip.assetId) ?? this.stream(clip)?.frameAt(sourceTime, playing) ?? null
+    );
   }
 
   render(ctx: Ctx2D, project: Project, t: number, playing: boolean, atRest: string | null = null) {
     this.used.clear();
     renderFrame(ctx, project, t, {
-      frames: (clip, sourceTime) => this.frame(clip, sourceTime),
+      frames: (clip, sourceTime) => this.frame(clip, sourceTime, playing),
       gpu: this.gpu,
       resolve: (id) => resolveEffect(project, id),
       scratch: this.scratch,
       atRest,
     });
 
+    // Clips about to appear get their decoder to the first frame they will show,
+    // so the cut (or the start of the transition into them) is instant. Clips
+    // already on screen are left alone: rendering is driving their decoders.
     if (playing) {
-      const soon = t + PREWARM;
-      for (const clip of layersAt(project, soon).flatMap(layerClips)) {
-        if (clip.type === "media" && clip.start > t)
-          this.frame(clip, frameSourceTime(project, clip, soon));
+      for (const clip of layersAt(project, t + PREWARM).flatMap(layerClips)) {
+        if (clip.type !== "media" || this.used.has(clip.id) || this.media.image(clip.assetId)) {
+          continue;
+        }
+        const appears = transitionWindow(project, clip)?.start ?? clip.start;
+        this.stream(clip)?.prime(frameSourceTime(project, clip, appears));
       }
     }
 

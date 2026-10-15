@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { formatDuration, formatTimecode, snapToFrame } from "./time";
+import { formatDuration, formatFps, formatTimecode, frameStart, snapToFrame } from "./time";
 
 describe("formatTimecode", () => {
   it("renders hours, minutes, seconds and frames", () => {
@@ -15,6 +15,34 @@ describe("formatTimecode", () => {
   it("is robust to floating point error just below a frame boundary", () => {
     expect(formatTimecode(0.1 + 0.2, 10)).toBe("00:00:00:03");
   });
+
+  it("counts whole frames at fractional rates, labelled by the nominal rate", () => {
+    const film = 24000 / 1001;
+    expect(formatTimecode(23 / film, film)).toBe("00:00:00:23");
+    expect(formatTimecode(24 / film, film)).toBe("00:00:01:00");
+  });
+
+  it("widens the frame field for rates of 100 fps and above", () => {
+    expect(formatTimecode(5 / 120, 120)).toBe("00:00:00:005");
+    expect(formatTimecode(119 / 120, 120)).toBe("00:00:00:119");
+  });
+
+  it("uses drop-frame timecode at 29.97 and 59.94, so it tracks the clock", () => {
+    const ntsc = 30000 / 1001;
+    expect(formatTimecode(1799 / ntsc, ntsc)).toBe("00:00:59;29");
+    expect(formatTimecode(1800 / ntsc, ntsc)).toBe("00:01:00;02");
+    expect(formatTimecode(17982 / ntsc, ntsc)).toBe("00:10:00;00");
+    expect(formatTimecode(3600, 60000 / 1001)).toBe("01:00:00;00");
+  });
+});
+
+describe("formatFps", () => {
+  it("names standard rates the way editors do", () => {
+    expect(formatFps(30)).toBe("30");
+    expect(formatFps(30000 / 1001)).toBe("29.97");
+    expect(formatFps(24000 / 1001)).toBe("23.976");
+    expect(formatFps(60000 / 1001)).toBe("59.94");
+  });
 });
 
 describe("formatDuration", () => {
@@ -29,5 +57,14 @@ describe("snapToFrame", () => {
   it("rounds to the nearest frame boundary", () => {
     expect(snapToFrame(1.01, 25)).toBe(1);
     expect(snapToFrame(1.03, 25)).toBe(1.04);
+  });
+});
+
+describe("frameStart", () => {
+  it("is the start of the frame on screen at t", () => {
+    expect(frameStart(1.01, 25)).toBe(1);
+    expect(frameStart(1.039, 25)).toBe(1);
+    expect(frameStart(0.1 + 0.2, 10)).toBeCloseTo(0.3, 9);
+    expect(frameStart(2.5, 30)).toBe(2.5);
   });
 });

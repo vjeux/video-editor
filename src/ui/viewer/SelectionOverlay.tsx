@@ -167,7 +167,10 @@ export function SelectionOverlay({
   const editingText = useEditor((s) => s.editingText);
   const editText = useEditor((s) => s.editText);
   const gesture = useGestureKey("viewer");
-  const layers = visualLayers(project, playhead);
+  const playing = useEditor((s) => s.playing);
+  // During playback the box would chase every frame (measuring titles each
+  // time) and cannot be dragged anyway: it reappears on pause.
+  const layers = playing ? [] : visualLayers(project, playhead);
   const selected = layers.find((c) => selection.length === 1 && c.id === selection[0]);
   const box = selected ? boxOf(project, selected, fontsVersion) : null;
   const isLocked = (clip: Clip) =>
@@ -182,10 +185,13 @@ export function SelectionOverlay({
     const p = toProject(clientX, clientY);
     return (
       p &&
-      layers.toReversed().find((clip) => {
-        const b = boxOf(project, clip, fontsVersion);
-        return b && containsLayer(b, clip, p.x, p.y);
-      })
+      // Hit-tests live layers: the drawn ones are empty during playback.
+      visualLayers(project, playhead)
+        .toReversed()
+        .find((clip) => {
+          const b = boxOf(project, clip, fontsVersion);
+          return b && containsLayer(b, clip, p.x, p.y);
+        })
     );
   };
 
