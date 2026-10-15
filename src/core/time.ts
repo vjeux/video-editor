@@ -32,3 +32,7 @@ export function formatDuration(t: Seconds): string {
 
 /** The start of the frame on screen at `t`. */
 export const frameStart = (t: Seconds, fps: number): Seconds => frameIndex(t, fps) / fps;
+
+export function formatFps(_fps: number): string {
+  throw new Error("Not implemented");
+}
