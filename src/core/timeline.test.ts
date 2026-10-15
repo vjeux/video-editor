@@ -22,6 +22,7 @@ import {
   removeClips,
   snapCandidates,
   snapTime,
+  sourceTimeAt,
   splitAtTime,
   splitClip,
   trackEnd,
@@ -348,5 +349,13 @@ describe("snapping", () => {
     expect(snapCandidates(base, { exclude: ["b"], playhead: 3 }).sort((x, y) => x - y)).toEqual([
       0, 3, 4, 12,
     ]);
+  });
+});
+
+describe("sourceTimeAt", () => {
+  it("maps timeline time into source time through offset and speed", () => {
+    const clip = { ...videoClip("a", 10, 4, 3), speed: 2 } as MediaClip;
+    expect(sourceTimeAt(clip, 10)).toBe(3);
+    expect(sourceTimeAt(clip, 11.5)).toBe(6);
   });
 });

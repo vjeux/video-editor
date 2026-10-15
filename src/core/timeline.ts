@@ -226,3 +226,7 @@ export function snapCandidates(
     .flatMap((c) => [c.start, clipEnd(c)]);
   return [...new Set([0, opts.playhead, ...project.markers.map((m) => m.time), ...edges])];
 }
+
+export const sourceTimeAt = (_clip: MediaClip, _t: Seconds): Seconds => {
+  throw new Error("not implemented");
+};
