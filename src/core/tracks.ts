@@ -62,3 +62,13 @@ export function trackLabel(project: Project, trackId: Id): string {
   const number = track.kind === "audio" ? position + 1 : sameKind.length - position;
   return `${TRACK_PREFIX[track.kind]}${number}`;
 }
+
+export const overlayTrackFor = (
+  _project: Project,
+  _kind: ClipKind,
+  _start: number,
+  _duration: number,
+  _newId: IdFactory,
+): { project: Project; trackId: Id } => {
+  throw new Error("not implemented");
+};
