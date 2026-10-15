@@ -6,6 +6,7 @@ import { Row } from "./Row";
 /** Label + slider + number field; a drag, a scrub or a typed value is one undo step. */
 export function SliderRow({
   label,
+  ariaLabel = label,
   value,
   min,
   max,
@@ -18,6 +19,8 @@ export function SliderRow({
   onChange,
 }: {
   label: string;
+  /** Distinguishes repeated fields while keeping the visible label short. */
+  ariaLabel?: string;
   value: number;
   min: number;
   max: number;
@@ -31,11 +34,11 @@ export function SliderRow({
   defaultValue?: number;
   onChange: (value: number, coalesce: string) => void;
 }) {
-  const gesture = useGestureKey(label);
+  const gesture = useGestureKey(ariaLabel);
   return (
     <Row label={label}>
       <Range
-        label={label}
+        label={ariaLabel}
         value={value}
         min={min}
         max={max}
@@ -46,7 +49,7 @@ export function SliderRow({
         valueText={`${display(value).toFixed(precision)}${suffix ?? ""}`}
       />
       <NumberField
-        label={label}
+        label={ariaLabel}
         value={display(value)}
         precision={precision}
         suffix={suffix}

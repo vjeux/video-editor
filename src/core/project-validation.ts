@@ -8,6 +8,7 @@ const text: Check = (v) => typeof v === "string";
 const number: Check = (v) => typeof v === "number" && Number.isFinite(v);
 const positive: Check = (v) => number(v) && (v as number) > 0;
 const nonnegative: Check = (v) => number(v) && (v as number) >= 0;
+const unit: Check = (v) => nonnegative(v) && (v as number) <= 1;
 const bool: Check = (v) => typeof v === "boolean";
 const oneOf =
   (...values: unknown[]): Check =>
@@ -35,6 +36,53 @@ const params = dictionary(parameter);
 const instance = shape({ id: text, effectId: text, enabled: bool, params });
 const easing = oneOf("linear", "easeOut", "easeInOut", "backOut", "bounceOut", "elasticOut");
 const animation = nullable(shape({ presetId: text, duration: positive, easing }));
+const frameShadow = shape({ color: text, blur: nonnegative, x: number, y: number });
+const insets = (check: Check) => shape({ top: check, right: check, bottom: check, left: check });
+const point = shape({ x: unit, y: unit });
+const appearance = shape({
+  radius: nonnegative,
+  background: nullable(
+    shape({ type: oneOf("solid", "linear"), color: text, color2: text, angle: number }),
+  ),
+  padding: (v) => insets(nonnegative)(v) && shape({ linked: bool })(v),
+  crop: (v) =>
+    insets(unit)(v) &&
+    record(v) &&
+    (v.left as number) + (v.right as number) < 1 &&
+    (v.top as number) + (v.bottom as number) < 1,
+  aspect: nullable(positive),
+  fit: oneOf("contain", "cover"),
+  position: point,
+  mask: shape({
+    shape: oneOf("rectangle", "circle", "ellipse", "diamond", "hexagon", "custom"),
+    points: (v) => Array.isArray(v) && v.length >= 3 && v.length <= 32 && v.every(point),
+  }),
+  feather: nonnegative,
+  blendMode: oneOf(
+    "normal",
+    "multiply",
+    "screen",
+    "overlay",
+    "darken",
+    "lighten",
+    "soft-light",
+    "hard-light",
+    "difference",
+    "exclusion",
+  ),
+  border: nullable(
+    shape({
+      color: text,
+      width: nonnegative,
+      style: oneOf("solid", "dashed", "dotted", "double", "gradient"),
+      color2: text,
+      angle: number,
+    }),
+  ),
+  shadow: nullable(frameShadow),
+  innerShadow: nullable(frameShadow),
+  glow: nullable(shape({ color: text, blur: nonnegative })),
+});
 const style = shape({
   fontFamily: text,
   fontWeight: positive,
@@ -81,6 +129,7 @@ const clip: Check = (v) => {
       volume: nonnegative,
       speedRamp: nullable(text),
       audioEffects: array(instance),
+      appearance,
     })(v);
   return (
     v.type === "text" &&

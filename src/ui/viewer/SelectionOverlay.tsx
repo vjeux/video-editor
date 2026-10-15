@@ -14,7 +14,7 @@ import { useGestureKey } from "../gesture";
 import { colors, fonts } from "../theme/tokens.stylex";
 import { InlineTextEditor } from "./InlineTextEditor";
 import { useFontsVersion } from "./use-fonts-version";
-import { boxOf, contains, rotateAbout, scaleAbout, snapOffset, type Point } from "./layer-box";
+import { boxOf, containsLayer, rotateAbout, scaleAbout, snapOffset, type Point } from "./layer-box";
 
 const SNAP_PX = 12;
 
@@ -184,7 +184,7 @@ export function SelectionOverlay({
       p &&
       layers.toReversed().find((clip) => {
         const b = boxOf(project, clip, fontsVersion);
-        return b && contains(b, p.x, p.y);
+        return b && containsLayer(b, clip, p.x, p.y);
       })
     );
   };

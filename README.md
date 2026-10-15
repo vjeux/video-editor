@@ -22,6 +22,11 @@ Built on [Mediabunny](https://mediabunny.dev/) + WebCodecs · React 19 · StyleX
   keeps sources together without base64 expansion.
 - **A quieter workspace.** The header keeps the project name and saved status;
   the menu holds Script, Export, Light/Dark/System themes and keyboard shortcut Help.
+- **Style video and image frames.** The inspector's Appearance section adds rounded
+  corners, visual corner and border presets, gradients, padding, crop/fit, shape and
+  custom polygon masks, inward feathering, inner/outer shadows, glow and blend modes.
+  Drag the shadow preview to position it, or enter exact pixel offsets.
+  Styling follows the clip's transform, appears in exports and saves with the project.
 - **A real multi-track timeline.** Video, audio and title tracks with
   filmstrips and waveforms. You can move clips (across tracks and in groups),
   trim, blade and split, ripple-delete, copy, paste and duplicate. Snapping

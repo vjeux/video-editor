@@ -2,10 +2,11 @@ import { clipOpacityAt } from "../core/animation";
 import { animationStateAt, IDENTITY_MOTION, type MotionDelta } from "../core/clip-animations";
 import { defaultParams } from "../core/effects";
 import { layersAt, type Layer } from "../core/layers";
-import { containSize } from "../core/layout";
+import { mediaFrameSize } from "../core/media-layout";
 import { clipEnd, frameSourceTime } from "../core/timeline";
 import type { Clip, EffectDefinition, MediaClip, Project, TextClip } from "../core/types";
 import type { GpuEffects, GpuPass } from "./gpu";
+import { drawMediaFrame, hasMediaAppearance } from "./media-renderer";
 import { drawText, textBounds } from "./text-renderer";
 
 export { fontFor, layoutText, type TextLayout } from "./text-renderer";
@@ -27,19 +28,26 @@ export function layerSize(
     return { width: project.settings.width, height: project.settings.height };
   const asset = project.assets[clip.assetId];
   if (!asset || !asset.width) return { width: 0, height: 0 };
-  return containSize(asset.width, asset.height, project.settings.width, project.settings.height);
+  return mediaFrameSize(
+    asset.width,
+    asset.height,
+    project.settings.width,
+    project.settings.height,
+    clip.appearance,
+  );
 }
 
 function drawMedia(ctx: Ctx2D, project: Project, clip: MediaClip, t: number, frames: FrameSource) {
   const frame = frames(clip, frameSourceTime(project, clip, t));
   if (!frame) return;
-  const { width, height } = containSize(
+  const { width, height } = mediaFrameSize(
     frame.width,
     frame.height,
     project.settings.width,
     project.settings.height,
+    clip.appearance,
   );
-  ctx.drawImage(frame, -width / 2, -height / 2, width, height);
+  drawMediaFrame(ctx, frame, width, height, clip.appearance);
 }
 
 /** Everything the compositor needs besides the project: decoded frames, the GPU and effect lookup. */
@@ -130,10 +138,16 @@ function drawPlaced(
 }
 
 /** Copies a full-frame image over `ctx` ignoring its project-space transform. */
-function blit(ctx: Ctx2D, image: Drawable, alpha: number) {
+function blit(
+  ctx: Ctx2D,
+  image: Drawable,
+  alpha: number,
+  blend: GlobalCompositeOperation = "source-over",
+) {
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = alpha;
+  ctx.globalCompositeOperation = blend;
   ctx.drawImage(image, 0, 0, ctx.canvas.width, ctx.canvas.height);
   ctx.restore();
 }
@@ -157,7 +171,14 @@ function drawClip(
   const alpha = atRest ? clip.transform.opacity : clipOpacityAt(clip, local) * motion.opacity;
   if (alpha <= 0) return;
   const passes = services.gpu ? effectPasses(project, clip, t, services) : [];
-  if (passes.length === 0 || !services.gpu) {
+  const blend =
+    clip.type === "media" && clip.appearance.blendMode !== "normal"
+      ? clip.appearance.blendMode
+      : "source-over";
+  // Composite frame, border and shadow together when fading a styled clip.
+  const flattenAppearance =
+    clip.type === "media" && alpha < 1 && hasMediaAppearance(clip.appearance);
+  if (passes.length === 0 && !flattenAppearance && blend === "source-over") {
     drawPlaced(ctx, project, clip, t, motion, alpha, services.frames, atRest);
     return;
   }
@@ -165,7 +186,9 @@ function drawClip(
   const scale = ctx.canvas.width / project.settings.width;
   scratch.setTransform(scale, 0, 0, scale, 0, 0);
   drawPlaced(scratch, project, clip, t, motion, 1, services.frames, atRest);
-  blit(ctx, services.gpu.apply(scratch.canvas, passes), alpha);
+  const image =
+    passes.length > 0 && services.gpu ? services.gpu.apply(scratch.canvas, passes) : scratch.canvas;
+  blit(ctx, image, alpha, blend);
 }
 
 /** Renders one side of a transition (with its own effects) into a fresh scratch canvas. */
@@ -176,8 +199,10 @@ function renderSide(
   t: number,
   services: RenderServices,
   slot: number,
+  backdrop = false,
 ): OffscreenCanvasRenderingContext2D {
   const side = services.scratch.get(slot, like.canvas.width, like.canvas.height);
+  if (backdrop) side.drawImage(like.canvas, 0, 0);
   const scale = like.canvas.width / project.settings.width;
   side.setTransform(scale, 0, 0, scale, 0, 0);
   if (clip.type !== "adjustment") drawClip(side, project, clip, t, services, SLOT.layer);
@@ -206,11 +231,14 @@ const LAYER_RENDERERS: { [K in Layer["kind"]]: LayerRenderer<K> } = {
     blit(ctx, services.gpu.apply(ctx.canvas, passes), alpha);
   },
   transition: (ctx, project, layer, t, services) => {
-    const from = renderSide(ctx, project, layer.from, t, services, SLOT.from);
-    const to = renderSide(ctx, project, layer.to, t, services, SLOT.to);
+    const backdrop = [layer.from, layer.to].some(
+      (clip) => clip.type === "media" && clip.appearance.blendMode !== "normal",
+    );
+    const from = renderSide(ctx, project, layer.from, t, services, SLOT.from, backdrop);
+    const to = renderSide(ctx, project, layer.to, t, services, SLOT.to, backdrop);
     const definition = services.resolve(layer.transition.effectId);
     if (!services.gpu || !definition) {
-      blit(ctx, from.canvas, 1 - layer.progress);
+      blit(ctx, from.canvas, backdrop ? 1 : 1 - layer.progress);
       blit(ctx, to.canvas, layer.progress);
       return;
     }

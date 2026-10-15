@@ -1,4 +1,5 @@
 import type { Clip, Project, TextClip } from "../../core/types";
+import { insideMediaMask } from "../../core/media-layout";
 import { layerSize, layoutText, type TextLayout } from "../../engine/compositor";
 
 /** A layer's oriented bounding box, in project pixels. */
@@ -52,6 +53,22 @@ export function contains(box: Box, px: number, py: number) {
   const lx = dx * Math.cos(a) - dy * Math.sin(a);
   const ly = dx * Math.sin(a) + dy * Math.cos(a);
   return Math.abs(lx) <= box.width / 2 && Math.abs(ly) <= box.height / 2;
+}
+
+export function containsLayer(box: Box, clip: Clip, px: number, py: number) {
+  if (!contains(box, px, py)) return false;
+  if (clip.type !== "media") return true;
+  const a = (-box.rotation * Math.PI) / 180;
+  const dx = px - box.cx;
+  const dy = py - box.cy;
+  const s = clip.transform.scale;
+  return insideMediaMask(
+    (dx * Math.cos(a) - dy * Math.sin(a)) / s,
+    (dx * Math.sin(a) + dy * Math.cos(a)) / s,
+    box.width / s,
+    box.height / s,
+    clip.appearance,
+  );
 }
 
 /** Snaps a centre offset to the frame centre and the frame edges. */

@@ -16,7 +16,7 @@ const styles = stylex.create({
   },
 });
 
-/** A toggleable text look: label, on/off, an inline control and settings when on. */
+/** A toggleable look: label, on/off, an inline control and settings when on. */
 export function StyleEffectRow({
   label,
   on,

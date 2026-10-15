@@ -46,17 +46,35 @@ const AsyncFunction = Object.getPrototypeOf(async () => undefined).constructor a
 
 const format = (value: unknown) => (typeof value === "string" ? value : JSON.stringify(value));
 
-/** Shallow merge that also merges the nested `transform` and `style` objects. */
+/** Merge edits without dropping other transform, text or frame styling settings. */
 function merge(clip: Clip, patch: Patch): Clip {
-  const { transform, style, ...rest } = patch;
+  const { transform, style, appearance, ...rest } = patch;
   const merged = {
     ...clip,
     ...rest,
     transform: { ...clip.transform, ...(transform as Patch) },
   } as Clip;
-  return merged.type === "text" && style
-    ? { ...merged, style: { ...merged.style, ...(style as Patch) } }
-    : merged;
+  if (merged.type === "text" && style)
+    return { ...merged, style: { ...merged.style, ...(style as Patch) } };
+  if (merged.type === "media" && appearance) {
+    const edits = Object.fromEntries(
+      Object.entries(appearance as Patch).map(([key, value]) => {
+        const previous = merged.appearance[key as keyof typeof merged.appearance];
+        return [
+          key,
+          value &&
+          typeof value === "object" &&
+          !Array.isArray(value) &&
+          previous &&
+          typeof previous === "object"
+            ? { ...previous, ...value }
+            : value,
+        ];
+      }),
+    );
+    return { ...merged, appearance: { ...merged.appearance, ...edits } };
+  }
+  return merged;
 }
 
 /**

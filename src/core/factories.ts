@@ -3,6 +3,9 @@ import type {
   Asset,
   ClipKind,
   Id,
+  FrameBorder,
+  FrameFill,
+  MediaAppearance,
   MediaClip,
   Project,
   TextClip,
@@ -13,6 +16,46 @@ import type {
 } from "./types";
 
 export const DEFAULT_TRANSFORM: Transform = { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 };
+
+export const DEFAULT_MEDIA_BACKGROUND: FrameFill = {
+  type: "solid",
+  color: "#ffffff",
+  color2: "#8b74ff",
+  angle: 135,
+};
+export const DEFAULT_MEDIA_BORDER: FrameBorder = {
+  color: "#ffffff",
+  width: 4,
+  style: "solid",
+  color2: "#8b74ff",
+  angle: 135,
+};
+export const DEFAULT_MEDIA_APPEARANCE: MediaAppearance = {
+  radius: 0,
+  border: null,
+  shadow: null,
+  background: null,
+  padding: { top: 0, right: 0, bottom: 0, left: 0, linked: true },
+  crop: { top: 0, right: 0, bottom: 0, left: 0 },
+  aspect: null,
+  fit: "contain",
+  position: { x: 0.5, y: 0.5 },
+  mask: {
+    shape: "rectangle",
+    points: [
+      { x: 0.5, y: 0 },
+      { x: 1, y: 0.4 },
+      { x: 0.8, y: 1 },
+      { x: 0.2, y: 1 },
+      { x: 0, y: 0.4 },
+    ],
+  },
+  feather: 0,
+  blendMode: "normal",
+  innerShadow: null,
+  glow: null,
+};
+export const DEFAULT_MEDIA_SHADOW = { color: "rgba(0, 0, 0, 0.4)", blur: 32, x: 0, y: 16 };
 
 /** The subtle legibility shadow titles have always had, now adjustable. */
 export const DEFAULT_TEXT_SHADOW = { color: "rgba(0, 0, 0, 0.35)", blur: 0.2, x: 0, y: 0.02 };
@@ -75,6 +118,7 @@ export function createMediaClip(
     volume: 1,
     speedRamp: null,
     audioEffects: [],
+    appearance: DEFAULT_MEDIA_APPEARANCE,
     fadeIn: 0,
     fadeOut: 0,
     transform: DEFAULT_TRANSFORM,
