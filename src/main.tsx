@@ -1,4 +1,6 @@
 import "@fontsource-variable/inter";
+import "@fontsource-variable/montserrat";
+import "@fontsource/anton";
 import "@fontsource-variable/jetbrains-mono";
 import "@fontsource-variable/playfair-display";
 import "@fontsource-variable/space-grotesk";
