@@ -69,6 +69,8 @@ export function createMediaClip(
     transform: DEFAULT_TRANSFORM,
     effects: [],
     transitionIn: null,
+    animationIn: null,
+    animationOut: null,
   };
 }
 
@@ -84,6 +86,8 @@ export function createTextClip(at: { id: Id; trackId: Id; start: number; text: s
     transform: DEFAULT_TRANSFORM,
     effects: [],
     transitionIn: null,
+    animationIn: null,
+    animationOut: null,
   };
 }
 
@@ -99,5 +103,7 @@ export function createAdjustmentClip(at: { id: Id; trackId: Id; start: number })
     transform: DEFAULT_TRANSFORM,
     effects: [],
     transitionIn: null,
+    animationIn: null,
+    animationOut: null,
   };
 }

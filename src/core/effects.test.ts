@@ -194,6 +194,8 @@ describe("migrateProject", () => {
     for (const clip of Object.values(v1.clips as Record<string, Record<string, unknown>>)) {
       delete clip.effects;
       delete clip.transitionIn;
+      delete clip.animationIn;
+      delete clip.animationOut;
     }
     expect(migrateProject(v1)).toEqual(current);
   });

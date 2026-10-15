@@ -58,6 +58,15 @@ export interface TransitionInstance {
   params: Params;
 }
 
+export type Easing = "linear" | "easeOut" | "easeInOut" | "backOut" | "bounceOut";
+
+/** An enter or exit animation; exits play the preset in reverse. */
+export interface ClipAnimation {
+  presetId: string;
+  duration: Seconds;
+  easing: Easing;
+}
+
 interface ClipBase {
   id: Id;
   trackId: Id;
@@ -69,6 +78,8 @@ interface ClipBase {
   /** Applied in order, in frame space, after the clip is placed. */
   effects: readonly EffectInstance[];
   transitionIn: TransitionInstance | null;
+  animationIn: ClipAnimation | null;
+  animationOut: ClipAnimation | null;
 }
 
 export interface MediaClip extends ClipBase {
