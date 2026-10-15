@@ -17,6 +17,12 @@ const STAGE_PAD = 16;
 
 /** Upper bound for the preview canvas width in device pixels. */
 const MAX_PREVIEW_WIDTH = 3840;
+/**
+ * While playing, frames change 30–60 times a second and sources decode at
+ * ≤1280 px: rendering wider only multiplies fill, effect and upload cost.
+ * Paused, the monitor goes back to full device resolution for crisp stills.
+ */
+const PLAYBACK_MAX_WIDTH = 1920;
 
 const styles = stylex.create({
   viewer: {
@@ -73,6 +79,7 @@ export function Viewer() {
   const stage = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const settings = useEditor((s) => s.project.settings);
+  const playing = useEditor((s) => s.playing);
   const isEmpty = useEditor((s) => Object.keys(s.project.clips).length === 0);
   const commit = useEditor((s) => s.commit);
   const [safe, setSafe] = useState(false);
@@ -111,13 +118,14 @@ export function Viewer() {
     const dpr = window.devicePixelRatio || 1;
     // Render at the display's device pixels (not the project width) so text and
     // vector shapes stay crisp on HiDPI screens; capped at 4K for memory.
-    const width = Math.round(Math.min(MAX_PREVIEW_WIDTH, rect.width * dpr));
+    const cap = playing ? PLAYBACK_MAX_WIDTH : MAX_PREVIEW_WIDTH;
+    const width = Math.round(Math.min(cap, rect.width * dpr));
     const height = Math.round(width * (settings.height / settings.width));
     // Assigning a canvas dimension clears it even when the value is unchanged,
     // and the render loop only redraws on real size changes: touch only on change.
     if (c.width !== width) c.width = width;
     if (c.height !== height) c.height = height;
-  }, [rect.width, settings.width, settings.height]);
+  }, [rect.width, settings.width, settings.height, playing]);
 
   useEffect(() => {
     const c = canvas.current;
