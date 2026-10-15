@@ -20,16 +20,18 @@ export interface TextEditFrame {
  */
 export function textEditFrame(
   box: Box,
-  layout: { padding: number; lineHeight: number },
+  layout: { width: number; height: number; padding: number; lineHeight: number },
   style: { fontSize: number; letterSpacing: number },
   scale: { display: number; clip: number },
 ): TextEditFrame {
   const type = scale.display * scale.clip;
+  const width = layout.width * type;
+  const height = layout.height * type;
   return {
-    left: (box.cx - box.width / 2) * scale.display,
-    top: (box.cy - box.height / 2) * scale.display,
-    width: box.width * scale.display,
-    height: box.height * scale.display,
+    left: box.cx * scale.display - width / 2,
+    top: box.cy * scale.display - height / 2,
+    width,
+    height,
     rotation: box.rotation,
     fontSize: style.fontSize * type,
     lineHeight: layout.lineHeight * type,

@@ -10,7 +10,6 @@ import { FORMAT_PRESETS } from "../formats";
 import { ColorSwatches } from "./ColorSwatches";
 import { Group } from "./Group";
 import { BACKGROUNDS, FRAME_RATES } from "./options";
-import { ShortcutList } from "./ShortcutList";
 
 const styles = stylex.create({
   pair: { display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 6 },
@@ -21,11 +20,14 @@ const even = (n: number) => Math.round(n / 2) * 2;
 export function ProjectInspector() {
   const settings = useEditor((s) => s.project.settings);
   const commit = useEditor((s) => s.commit);
+  const preset = FORMAT_PRESETS.find(
+    (p) => p.width === settings.width && p.height === settings.height,
+  );
   const setSettings = (patch: Partial<ProjectSettings>, coalesce?: string) =>
     commit((p) => ({ ...p, settings: { ...p.settings, ...patch } }), { coalesce });
   return (
     <>
-      <Group title="Project">
+      <Group title="Canvas settings">
         <Row label="Canvas" wide>
           <div {...stylex.props(styles.pair)}>
             <Field prefix="W">
@@ -55,8 +57,8 @@ export function ProjectInspector() {
         <Row label="Presets" wide>
           <Select
             label="Format preset"
-            value=""
-            placeholder="Choose a format…"
+            value={preset?.label ?? ""}
+            placeholder="Custom dimensions"
             options={FORMAT_PRESETS.map((p) => ({ value: p.label, label: p.label }))}
             onChange={(label) => {
               const preset = FORMAT_PRESETS.find((p) => p.label === label);
@@ -76,12 +78,9 @@ export function ProjectInspector() {
           <ColorSwatches
             value={settings.background}
             palette={BACKGROUNDS}
-            onChange={(background) => setSettings({ background }, "bg")}
+            onChange={(background, key) => setSettings({ background }, key)}
           />
         </Row>
-      </Group>
-      <Group title="Shortcuts">
-        <ShortcutList />
       </Group>
     </>
   );

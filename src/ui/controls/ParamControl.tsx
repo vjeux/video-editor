@@ -45,7 +45,7 @@ export function ParamControl({
           showValue
           label={def.label}
           value={typeof current === "string" ? current : "#000000"}
-          onChange={(color) => onChange(color, `param:${def.key}`)}
+          onChange={onChange}
         />
       </Row>
     );

@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { useState, type ComponentType } from "react";
+import { useId, useState, type ComponentType } from "react";
 import { MediaBin } from "../media/MediaBin";
 import { colors } from "../theme/tokens.stylex";
 import { AnimationBrowser } from "./AnimationBrowser";
@@ -36,14 +36,20 @@ const styles = stylex.create({
 
 /** The left panel: media, effects, transitions and animations, one tab at a time. */
 export function LibraryPanel() {
+  const id = useId();
   const [tab, setTab] = useState<LibraryTab>("media");
   const View = VIEWS[tab];
   return (
     <section aria-label="Library" {...stylex.props(styles.panel)}>
       <div {...stylex.props(styles.tabs)}>
-        <LibraryTabs value={tab} onChange={setTab} />
+        <LibraryTabs id={id} value={tab} onChange={setTab} />
       </div>
-      <div {...stylex.props(styles.view)}>
+      <div
+        id={`${id}-panel`}
+        role="tabpanel"
+        aria-labelledby={`${id}-${tab}`}
+        {...stylex.props(styles.view)}
+      >
         <View />
       </div>
     </section>

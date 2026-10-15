@@ -8,6 +8,8 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { addAssetToTimeline, importFiles } from "../../app/assets";
+import { isProjectFile, openFiles } from "../../app/project-files";
+import { reportError } from "../../app/errors";
 import { MAX_PX_PER_SECOND, MIN_PX_PER_SECOND } from "../../app/commands";
 import { applyEffect, applyTransition } from "../../app/effects";
 import { newId } from "../../app/engine";
@@ -28,6 +30,7 @@ import type { Clip, Id, Project } from "../../core/types";
 import { editorStore, useEditor } from "../../store";
 import { EFFECT_MIME } from "../effect-dnd";
 import { ASSET_MIME } from "../media/dnd";
+import { Icon } from "../controls/Icon";
 import { colors } from "../theme/tokens.stylex";
 import type { ClipEdge } from "./ClipView";
 import { CUT_REACH_PX, cutTarget, effectDragKind, effectTargets } from "./effect-drop";
@@ -118,7 +121,11 @@ const styles = stylex.create({
     color: colors.faint,
     pointerEvents: "none",
     fontSize: 12,
+    padding: 20,
+    textAlign: "center",
   },
+  emptyContent: { display: "flex", flexDirection: "column", alignItems: "center", gap: 8 },
+  emptyTitle: { color: colors.muted, fontWeight: 500 },
 });
 
 export function Timeline() {
@@ -357,8 +364,11 @@ export function Timeline() {
     if (target?.locked) return;
     const assetId = e.dataTransfer.getData(ASSET_MIME);
     if (assetId) addAssetToTimeline(assetId, { trackId: target?.id, start: time });
-    else if (e.dataTransfer.files.length)
-      void importFiles([...e.dataTransfer.files], { trackId: target?.id, start: time });
+    else if (e.dataTransfer.files.length) {
+      const files = [...e.dataTransfer.files];
+      if (files.some(isProjectFile)) void openFiles(files).catch(reportError);
+      else void importFiles(files, { trackId: target?.id, start: time });
+    }
   };
 
   const dragIds = preview?.ids ?? [];
@@ -375,7 +385,7 @@ export function Timeline() {
     drag?.kind === "transition" && drag.trackId === trackId ? (drag.cut?.time ?? null) : null;
 
   return (
-    <section aria-label="Timeline" {...stylex.props(styles.root)}>
+    <section id="timeline-panel" aria-label="Timeline" {...stylex.props(styles.root)}>
       <TimelineToolbar width={view.width} />
       <div {...stylex.props(styles.body)}>
         <TrackHeaders scrollRef={heads} />
@@ -439,7 +449,11 @@ export function Timeline() {
           </div>
           {Object.keys(project.clips).length === 0 && !drag && (
             <div {...stylex.props(styles.empty)}>
-              Drag media here from the bin — or press T to add a title
+              <div {...stylex.props(styles.emptyContent)}>
+                <Icon name="track" size={24} />
+                <span {...stylex.props(styles.emptyTitle)}>Make room for your first clip</span>
+                <span>Drag media here, or press T to add a title.</span>
+              </div>
             </div>
           )}
         </div>

@@ -1,10 +1,12 @@
 import * as stylex from "@stylexjs/stylex";
-import { startTransition, Suspense, useActionState, useRef, useState } from "react";
+import { startTransition, useActionState, useEffect, useId, useRef, useState } from "react";
 import { media } from "../../app/engine";
 import { reportError } from "../../app/errors";
 import { formatTimecode } from "../../core/time";
 import { projectDuration } from "../../core/timeline";
+import type { Project } from "../../core/types";
 import {
+  encodableFormats,
   exportFileName,
   exportProject,
   type ExportFormat,
@@ -12,8 +14,9 @@ import {
 } from "../../engine/export";
 import { editorStore, useEditor } from "../../store";
 import { Button } from "../controls/Button";
-import { Segmented } from "../controls/Segmented";
+import { Icon } from "../controls/Icon";
 import { Select } from "../controls/Select";
+import { surfaces } from "../controls/surfaces";
 import { colors, radii } from "../theme/tokens.stylex";
 import { Dialog } from "./Dialog";
 import { DialogField } from "./DialogField";
@@ -22,18 +25,38 @@ import { ExportSummary } from "./ExportSummary";
 import { FormatPicker } from "./FormatPicker";
 
 const QUALITY_OPTIONS: readonly { value: ExportQuality; label: string }[] = [
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
-  { value: "very-high", label: "Max" },
+  { value: "low", label: "Small file" },
+  { value: "medium", label: "Balanced" },
+  { value: "high", label: "High · Recommended" },
+  { value: "very-high", label: "Maximum" },
 ];
+
+const QUALITY_HINTS: Record<ExportQuality, string> = {
+  low: "Compact files for quick previews and sharing.",
+  medium: "A balance of image detail and file size.",
+  high: "Crisp detail for a finished video.",
+  "very-high": "The most detail, with a larger file size.",
+};
+
+interface OutputDetails {
+  filename: string;
+  resolution: string;
+  duration: string;
+  frameRate: string;
+}
 
 type Result =
   | { kind: "idle" }
-  | { kind: "done"; url: string; size: number; filename: string; seconds: number };
+  | { kind: "done"; url: string; size: number; details: OutputDetails };
 
 type Command =
-  | { type: "export"; format: ExportFormat; quality: ExportQuality; height: number }
+  | {
+      type: "export";
+      format: ExportFormat;
+      quality: ExportQuality;
+      height: number;
+      filename: string;
+    }
   | { type: "reset" };
 
 interface Progress {
@@ -44,28 +67,134 @@ interface Progress {
 const IDLE: Result = { kind: "idle" };
 
 const formatBytes = (bytes: number) =>
-  bytes > 1e9 ? `${(bytes / 1e9).toFixed(2)} GB` : `${(bytes / 1e6).toFixed(1)} MB`;
+  bytes >= 1e9
+    ? `${(bytes / 1e9).toFixed(2)} GB`
+    : bytes >= 1e6
+      ? `${(bytes / 1e6).toFixed(1)} MB`
+      : `${Math.max(1, Math.round(bytes / 1e3))} KB`;
+
+function outputDetails(project: Project, height: number, filename: string): OutputDetails {
+  const h = Math.max(2, Math.round(height / 2) * 2);
+  const w = Math.max(
+    2,
+    Math.round(((project.settings.width / project.settings.height) * h) / 2) * 2,
+  );
+  return {
+    filename,
+    resolution: `${w} × ${h}`,
+    duration: formatTimecode(projectDuration(project), project.settings.fps),
+    frameRate: `${project.settings.fps} fps`,
+  };
+}
 
 const styles = stylex.create({
-  result: { display: "grid", gap: 8 },
+  content: { display: "grid", gap: 22, paddingTop: 2, paddingBottom: 4 },
+  intro: { margin: 0, color: colors.muted, fontSize: 12, lineHeight: 1.7 },
+  output: {
+    display: "grid",
+    gap: 16,
+    padding: 16,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: colors.line,
+    backgroundColor: colors.bg,
+  },
+  file: { display: "flex", alignItems: "center", gap: 12, minWidth: 0 },
+  fileIcon: {
+    width: 40,
+    height: 44,
+    flexShrink: 0,
+    display: "grid",
+    placeItems: "center",
+    borderRadius: radii.md,
+    color: colors.accent2,
+    backgroundColor: colors.accentSoft,
+  },
+  fileText: { display: "grid", gap: 5, minWidth: 0, flexGrow: 1 },
+  eyebrow: { color: colors.muted, fontSize: 11 },
+  filename: { fontSize: 13, fontWeight: 600, overflowWrap: "anywhere", userSelect: "text" },
+  filenameField: { display: "flex", alignItems: "center", height: 36, overflow: "hidden" },
+  filenameInput: {
+    flexGrow: 1,
+    width: "100%",
+    minWidth: 0,
+    height: "100%",
+    paddingInline: 10,
+    borderWidth: 0,
+    outline: "none",
+    backgroundColor: "transparent",
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: 500,
+  },
+  extension: { flexShrink: 0, paddingRight: 10, color: colors.muted, fontSize: 12 },
+  settings: { display: "grid", gap: 20 },
+  row: {
+    display: "grid",
+    gridTemplateColumns: { default: "1fr 1fr", "@media (max-width: 449px)": "1fr" },
+    gap: 16,
+  },
+  field: { minWidth: 0, display: "grid", gap: 7, alignContent: "start" },
+  result: { display: "grid", gap: 12 },
+  ready: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    color: colors.audio,
+    fontSize: 13,
+    fontWeight: 550,
+  },
   video: {
     width: "100%",
-    maxHeight: 240,
+    maxHeight: 260,
     borderRadius: radii.lg,
     backgroundColor: "#000",
   },
-  hint: { margin: 0, color: colors.faint, fontSize: 11.5, lineHeight: 1.6 },
+  hint: { margin: 0, color: colors.muted, fontSize: 11, lineHeight: 1.6 },
+  privacy: {
+    display: { default: "flex", "@media (max-width: 449px)": "none" },
+    alignItems: "center",
+    gap: 6,
+    fontSize: 11,
+    color: colors.muted,
+  },
 });
 
 export function ExportDialog({ onClose }: { onClose: () => void }) {
-  const settings = useEditor((s) => s.project.settings);
-  const duration = useEditor((s) => projectDuration(s.project));
+  const project = useEditor((s) => s.project);
+  const { settings } = project;
+  const duration = projectDuration(project);
   const [format, setFormat] = useState<ExportFormat>("mp4");
+  const [filenameDraft, setFilenameDraft] = useState<string | null>(null);
+  const filenameId = useId();
   const [quality, setQuality] = useState<ExportQuality>("high");
   const [chosenHeight, setHeight] = useState<number | null>(null);
   const [progress, setProgress] = useState<Progress>({ progress: 0, eta: null });
+  const [supported, setSupported] = useState<Record<ExportFormat, boolean> | null>(null);
+  const [activeOutput, setActiveOutput] = useState<OutputDetails | null>(null);
   const abort = useRef<AbortController | null>(null);
   const height = chosenHeight ?? settings.height;
+  const filename = exportFileName(project, format, filenameDraft ?? project.name);
+  const filenameBase = filename.slice(0, -(format.length + 1));
+
+  useEffect(() => {
+    let active = true;
+    encodableFormats()
+      .then((formats) => {
+        if (!active) return;
+        setSupported(formats);
+        setFormat((current) => (formats[current] ? current : formats.mp4 ? "mp4" : "webm"));
+      })
+      .catch((error) => {
+        if (!active) return;
+        setSupported({ mp4: false, webm: false });
+        reportError(error);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   /**
    * The export is a React action: `exporting` is its pending flag, progress
@@ -81,9 +210,11 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
       abort.current = controller;
       const startedAt = performance.now();
       setProgress({ progress: 0, eta: null });
-      const project = editorStore.getState().project;
+      const source = editorStore.getState().project;
+      const details = outputDetails(source, command.height, command.filename);
+      setActiveOutput(details);
       try {
-        const blob = await exportProject(project, media, {
+        const blob = await exportProject(source, media, {
           ...command,
           signal: controller.signal,
           onProgress: (p) => {
@@ -95,8 +226,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
           kind: "done",
           url: URL.createObjectURL(blob),
           size: blob.size,
-          filename: exportFileName(project, command.format),
-          seconds: (performance.now() - startedAt) / 1000,
+          details,
         };
       } catch (error) {
         reportError(error);
@@ -111,33 +241,46 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
     .filter((h) => h <= Math.max(settings.height, 2160))
     .sort((a, b) => b - a);
   const width = (h: number) => Math.round(((settings.width / settings.height) * h) / 2) * 2;
+  const output =
+    result.kind === "done"
+      ? result.details
+      : exporting && activeOutput
+        ? activeOutput
+        : outputDetails(project, height, filename);
 
   const footer =
     result.kind === "done" ? (
       <>
-        <Button onClick={() => run({ type: "reset" })}>Export again</Button>
-        <Button variant="primary" href={result.url} download={result.filename}>
-          Download
+        <Button size="large" onClick={() => run({ type: "reset" })}>
+          Export again
+        </Button>
+        <Button size="large" variant="primary" href={result.url} download={result.details.filename}>
+          <Icon name="export" size={15} />
+          Download video
         </Button>
       </>
     ) : exporting ? (
       <>
-        <Button onClick={onClose} title="Keep exporting in the background">
-          Hide
+        <Button size="large" onClick={onClose} title="Keep exporting in the background">
+          Hide window
         </Button>
-        <Button variant="danger" onClick={() => abort.current?.abort()}>
-          Cancel
+        <Button size="large" variant="danger" onClick={() => abort.current?.abort()}>
+          Cancel export
         </Button>
       </>
     ) : (
       <>
-        <Button onClick={onClose}>Close</Button>
+        <Button size="large" onClick={onClose}>
+          Cancel
+        </Button>
         <Button
+          size="large"
           variant="primary"
-          onClick={() => run({ type: "export", format, quality, height })}
-          disabled={duration <= 0}
+          onClick={() => run({ type: "export", format, quality, height, filename })}
+          disabled={duration <= 0 || !supported?.[format]}
         >
-          Export
+          <Icon name="export" size={15} />
+          Export {format.toUpperCase()}
         </Button>
       </>
     );
@@ -145,57 +288,138 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
   return (
     <Dialog
       title="Export video"
+      size="export"
       onClose={onClose}
-      note="Powered by Mediabunny + WebCodecs"
+      note={
+        <span {...stylex.props(styles.privacy)}>
+          <Icon name="lock" size={12} />
+          Exported on your device
+        </span>
+      }
       footer={footer}
     >
-      <ExportSummary
-        items={[
-          { label: "Duration", value: formatTimecode(duration, settings.fps) },
-          { label: "Resolution", value: `${width(height)}×${height}` },
-          { label: "Frame rate", value: `${settings.fps} fps` },
-        ]}
-      />
-      {result.kind === "done" ? (
-        <div {...stylex.props(styles.result)}>
-          <video src={result.url} controls {...stylex.props(styles.video)} />
-          <p {...stylex.props(styles.hint)}>
-            {formatBytes(result.size)} · rendered in {result.seconds.toFixed(1)}s, entirely on your
-            device.
-          </p>
-        </div>
-      ) : (
-        <>
-          <DialogField label="Format">
-            <Suspense
-              fallback={<p {...stylex.props(styles.hint)}>Checking this browser's encoders…</p>}
-            >
-              <FormatPicker value={format} onChange={setFormat} />
-            </Suspense>
-          </DialogField>
-          <DialogField label="Resolution">
-            <Select
-              label="Resolution"
-              value={String(height)}
-              disabled={exporting}
-              options={heights.map((h) => ({
-                value: String(h),
-                label: `${width(h)} × ${h}${h === settings.height ? " (project)" : ""}`,
-              }))}
-              onChange={(v) => setHeight(Number(v))}
+      <div {...stylex.props(styles.content)}>
+        <p {...stylex.props(styles.intro)}>
+          {result.kind === "done"
+            ? "Your video is ready. Preview it below, then save it to your device."
+            : exporting
+              ? "Turning your timeline into a finished video."
+              : "Choose the format and quality for your finished video."}
+        </p>
+        <section aria-label="Output file" {...stylex.props(styles.output)}>
+          <div {...stylex.props(styles.file)}>
+            <span {...stylex.props(styles.fileIcon)}>
+              <Icon name="film" size={22} strokeWidth={1.5} />
+            </span>
+            <div {...stylex.props(styles.fileText)}>
+              {result.kind === "idle" && !exporting ? (
+                <>
+                  <label htmlFor={filenameId} {...stylex.props(styles.eyebrow)}>
+                    File name
+                  </label>
+                  <div {...stylex.props(surfaces.well, styles.filenameField)}>
+                    <input
+                      id={filenameId}
+                      type="text"
+                      value={filenameDraft ?? filenameBase}
+                      placeholder="export"
+                      spellCheck={false}
+                      autoComplete="off"
+                      onChange={(e) => setFilenameDraft(e.target.value)}
+                      onBlur={() => setFilenameDraft(filenameBase)}
+                      {...stylex.props(styles.filenameInput)}
+                    />
+                    <span {...stylex.props(styles.extension)}>.{format}</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <span {...stylex.props(styles.eyebrow)}>
+                    {result.kind === "done"
+                      ? `${formatBytes(result.size)} · Ready to download`
+                      : "Output file"}
+                  </span>
+                  <span {...stylex.props(styles.filename)}>{output.filename}</span>
+                </>
+              )}
+            </div>
+          </div>
+          <ExportSummary
+            items={[
+              { label: "Resolution", value: output.resolution },
+              { label: "Duration", value: output.duration },
+              { label: "Frame rate", value: output.frameRate },
+            ]}
+          />
+        </section>
+        {result.kind === "done" ? (
+          <div {...stylex.props(styles.result)}>
+            <div role="status" {...stylex.props(styles.ready)}>
+              <Icon name="check" size={16} />
+              Export complete
+            </div>
+            <video
+              aria-label="Exported video preview"
+              src={result.url}
+              controls
+              {...stylex.props(styles.video)}
             />
-          </DialogField>
-          <DialogField label="Quality">
-            <Segmented
-              label="Quality"
-              value={quality}
-              options={QUALITY_OPTIONS}
-              onChange={setQuality}
-            />
-          </DialogField>
-          {exporting && <ExportProgress progress={progress.progress} eta={progress.eta} />}
-        </>
-      )}
+          </div>
+        ) : exporting ? (
+          <ExportProgress progress={progress.progress} eta={progress.eta} />
+        ) : (
+          <div {...stylex.props(styles.settings)}>
+            <DialogField label="Format">
+              <FormatPicker value={format} onChange={setFormat} supported={supported} />
+              {!supported && (
+                <p role="status" {...stylex.props(styles.hint)}>
+                  Checking available formats…
+                </p>
+              )}
+              {supported && !supported.mp4 && !supported.webm && (
+                <p role="alert" {...stylex.props(styles.hint)}>
+                  Video export is unavailable in this browser. Try another browser with video
+                  encoding support.
+                </p>
+              )}
+            </DialogField>
+            <div {...stylex.props(styles.row)}>
+              <div {...stylex.props(styles.field)}>
+                <DialogField label="Resolution">
+                  <Select
+                    label="Resolution"
+                    value={String(height)}
+                    options={heights.map((h) => ({
+                      value: String(h),
+                      label:
+                        h === settings.height
+                          ? `Original · ${width(h)} × ${h}`
+                          : `${width(h)} × ${h}`,
+                    }))}
+                    onChange={(v) => setHeight(Number(v))}
+                  />
+                </DialogField>
+                <p {...stylex.props(styles.hint)}>
+                  {height > settings.height
+                    ? "Upscaled from your project. No extra detail is added."
+                    : "Keeps your project’s aspect ratio."}
+                </p>
+              </div>
+              <div {...stylex.props(styles.field)}>
+                <DialogField label="Quality">
+                  <Select
+                    label="Quality"
+                    value={quality}
+                    options={QUALITY_OPTIONS}
+                    onChange={setQuality}
+                  />
+                </DialogField>
+                <p {...stylex.props(styles.hint)}>{QUALITY_HINTS[quality]}</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </Dialog>
   );
 }

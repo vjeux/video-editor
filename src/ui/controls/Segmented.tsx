@@ -23,8 +23,11 @@ const styles = stylex.create({
     top: INSET,
     bottom: INSET,
     left: INSET,
-    borderRadius: 5,
-    backgroundColor: colors.raised,
+    borderRadius: 4,
+    backgroundColor: colors.accentSoft,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: colors.accentRing,
     boxShadow: shadows.raised,
     pointerEvents: "none",
     transitionProperty: "transform",
@@ -61,7 +64,10 @@ const styles = stylex.create({
     transitionDuration: motion.fast,
   },
   compact: { fontSize: 10.5, paddingInline: 2 },
-  on: { color: { default: colors.text, ":hover:not(:disabled)": colors.text }, fontWeight: 550 },
+  on: {
+    color: { default: colors.accent2, ":hover:not(:disabled)": colors.accent2 },
+    fontWeight: 600,
+  },
 });
 
 export function Segmented<T extends string>({

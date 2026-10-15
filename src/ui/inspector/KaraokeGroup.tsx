@@ -34,7 +34,8 @@ export function KaraokeGroup({ clip }: { clip: TextClip }) {
             <ColorInput
               label="Karaoke colour"
               value={karaoke.color}
-              onChange={(color) => set({ ...karaoke, color }, "karaoke-color")}
+              allowAlpha
+              onChange={(color, key) => set({ ...karaoke, color }, key)}
             />
           )
         }

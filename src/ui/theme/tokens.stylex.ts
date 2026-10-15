@@ -1,20 +1,21 @@
 import * as stylex from "@stylexjs/stylex";
 
 export const colors = stylex.defineVars({
-  bg: "#0e0f12",
-  panel: "#16181d",
-  panel2: "#1c1f26",
-  panel3: "#232731",
-  stage: "#0b0c0f",
-  lanes: "#121419",
-  line: "#262a33",
-  line2: "#323743",
-  text: "#e6e8ee",
-  muted: "#8b91a1",
-  faint: "#5b6170",
-  accent: "#7c6cff",
-  accentHover: "#6b5af5",
-  accent2: "#a99dff",
+  bg: "#0e1015",
+  panel: "#191c23",
+  panel2: "#20242d",
+  panel3: "#2a2f3b",
+  stage: "#11141a",
+  lanes: "#14171e",
+  line: "#2a2f3a",
+  line2: "#3a4252",
+  text: "#eef0f6",
+  muted: "#a2aabc",
+  faint: "#798398",
+  accent: "#8775ff",
+  accentHover: "#9686ff",
+  onAccent: "#141020",
+  accent2: "#b6aaff",
   accentSoft: "rgba(124, 108, 255, 0.12)",
   accentRing: "rgba(124, 108, 255, 0.35)",
   pink: "#ff6cb5",
@@ -27,11 +28,11 @@ export const colors = stylex.defineVars({
   danger: "#ff5d6c",
   dangerSoft: "rgba(255, 93, 108, 0.14)",
   /** Recessed input wells (text, number, select triggers). */
-  field: "#101216",
-  fieldHover: "#13151a",
+  field: "#20242d",
+  fieldHover: "#252a35",
   /** Raised surfaces: buttons, the segmented thumb, menu panels. */
-  raised: "#252935",
-  raisedHover: "#2b303d",
+  raised: "#2c3240",
+  raisedHover: "#384153",
   popover: "rgba(30, 33, 41, 0.97)",
   highlight: "rgba(255, 255, 255, 0.06)",
 });
@@ -43,15 +44,15 @@ export const fonts = stylex.defineVars({
 
 export const radii = stylex.defineVars({
   sm: "4px",
-  md: "7px",
-  lg: "8px",
+  md: "6px",
+  lg: "10px",
   xl: "12px",
   pill: "99px",
 });
 
 /** One height per control size so rows of mixed controls line up. */
 export const sizes = stylex.defineVars({
-  control: "28px",
+  control: "30px",
   controlSm: "24px",
 });
 
@@ -63,9 +64,9 @@ export const shadows = stylex.defineVars({
   /** Soft halo around a focused field, outside its border. */
   ring: "0 0 0 3px rgba(124, 108, 255, 0.28)",
   /** A recessed well: a faint inner shadow along the top edge. */
-  well: "inset 0 1px 2px rgba(0, 0, 0, 0.35)",
-  /** A raised surface: a highlight on the top edge and a tight drop. */
-  raised: "inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 2px rgba(0, 0, 0, 0.35)",
+  well: "inset 0 1px 1px rgba(0, 0, 0, 0.08)",
+  /** A subtle drop beneath controls, without a bevel along the top edge. */
+  raised: "0 1px 2px rgba(0, 0, 0, 0.15)",
   /** Floating panels: hairline outline, top highlight and a deep drop. */
   popover:
     "0 0 0 1px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 18px 48px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3)",

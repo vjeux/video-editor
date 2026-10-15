@@ -252,5 +252,11 @@ export function encodableFormats(): Promise<Record<ExportFormat, boolean>> {
   return encodable;
 }
 
-export const exportFileName = (project: Project, format: ExportFormat) =>
-  `${project.name.replace(/[\\/:*?"<>|]+/g, "-").trim() || "export"}.${format}`;
+export const exportFileName = (project: Project, format: ExportFormat, name = project.name) => {
+  const base = name
+    .trim()
+    .replace(/\.(mp4|webm)$/i, "")
+    .replace(/[\\/:*?"<>|]+/g, "-")
+    .replace(/[.\s]+$/, "");
+  return `${base || "export"}.${format}`;
+};

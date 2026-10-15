@@ -56,6 +56,7 @@ export function TransformGroup({ clip }: { clip: Clip }) {
         value={t.scale}
         min={0.05}
         max={4}
+        defaultValue={1}
         {...PERCENT}
         onChange={(scale, k) => set({ scale }, k)}
       />
@@ -65,6 +66,7 @@ export function TransformGroup({ clip }: { clip: Clip }) {
         min={-180}
         max={180}
         step={1}
+        defaultValue={0}
         suffix="°"
         onChange={(rotation, k) => set({ rotation }, k)}
       />
@@ -73,6 +75,7 @@ export function TransformGroup({ clip }: { clip: Clip }) {
         value={t.opacity}
         min={0}
         max={1}
+        defaultValue={1}
         {...PERCENT}
         onChange={(opacity, k) => set({ opacity }, k)}
       />

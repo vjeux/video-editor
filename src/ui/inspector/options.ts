@@ -35,20 +35,6 @@ export const ANIMATIONS: readonly { value: TextAnimation; label: string }[] = [
   { value: "blur", label: "Blur" },
 ];
 
-export const SHORTCUTS = [
-  ["Play / pause", "Space"],
-  ["Step frame / second", "← → / ⇧"],
-  ["Freeze frame", "F"],
-  ["Split at playhead", "S"],
-  ["Delete / ripple delete", "⌫ / ⇧⌫"],
-  ["Select / blade tool", "V / B"],
-  ["Add title / marker", "T / M"],
-  ["Edit selected title", "Enter"],
-  ["Snapping / loop", "N / L"],
-  ["Zoom timeline", "+ / −"],
-  ["Undo / redo", "⌘Z / ⇧⌘Z"],
-] as const;
-
 /** SliderRow mapping for values stored as 0–1 and shown as percentages. */
 export const PERCENT = {
   display: (v: number) => v * 100,

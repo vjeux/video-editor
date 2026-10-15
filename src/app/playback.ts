@@ -1,6 +1,6 @@
 import { projectDuration } from "../core/timeline";
 import { PreviewRenderer } from "../engine/preview";
-import { editorStore } from "../store";
+import { editorStore, mediaStore } from "../store";
 import { media, player } from "./engine";
 import { reportError } from "./errors";
 
@@ -44,6 +44,8 @@ export function attachViewer(canvas: HTMLCanvasElement): () => void {
   let dirty = true;
   const preview = new PreviewRenderer(media, () => (dirty = true), reportError);
   const markDirty = () => (dirty = true);
+  // Restored files may finish decoding after the project has already rendered.
+  const unsubscribeMedia = mediaStore.subscribe(markDirty);
   document.fonts.addEventListener("loadingdone", markDirty);
 
   let last = { project: state().project, t: -1, width: 0, height: 0, editing: state().editingText };
@@ -92,6 +94,7 @@ export function attachViewer(canvas: HTMLCanvasElement): () => void {
 
   return () => {
     cancelAnimationFrame(frame);
+    unsubscribeMedia();
     document.fonts.removeEventListener("loadingdone", markDirty);
     preview.dispose();
   };

@@ -93,7 +93,8 @@ export function TextInspector({ clip }: { clip: TextClip }) {
           <ColorSwatches
             value={style.color}
             palette={COLORS}
-            onChange={(color) => setStyle({ color }, `color:${clip.id}`)}
+            allowAlpha
+            onChange={(color, key) => setStyle({ color }, key)}
           />
         </Row>
         <Row label="Align" wide>

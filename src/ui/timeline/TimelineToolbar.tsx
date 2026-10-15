@@ -11,7 +11,7 @@ import { ZoomControl } from "./ZoomControl";
 
 const styles = stylex.create({
   bar: {
-    height: 40,
+    height: 48,
     flexShrink: 0,
     minWidth: 0,
     display: "flex",
@@ -26,6 +26,13 @@ const styles = stylex.create({
     borderBottomWidth: 1,
     borderBottomStyle: "solid",
     borderBottomColor: colors.line,
+  },
+  heading: {
+    display: { default: "block", "@media (max-width: 1199px)": "none" },
+    fontSize: 12,
+    fontWeight: 600,
+    paddingInline: 8,
+    marginRight: 10,
   },
   sep: {
     width: 1,
@@ -57,6 +64,7 @@ export function TimelineToolbar({ width }: { width: number }) {
   const setView = useEditor((s) => s.setView);
   return (
     <div {...stylex.props(styles.bar)}>
+      <span {...stylex.props(styles.heading)}>Timeline</span>
       <IconButton
         small={phone}
         icon="pointer"
@@ -115,7 +123,7 @@ export function TimelineToolbar({ width }: { width: number }) {
       <ImportMarkersButton />
       <div {...stylex.props(styles.sep)} />
       <span {...stylex.props(styles.tip)}>
-        Space <Kbd>play</Kbd> · ← → <Kbd>frame</Kbd> · drag clips, edges to trim
+        <Kbd>Space</Kbd> Play / pause · <Kbd>S</Kbd> Split · <Kbd>T</Kbd> Add title
       </span>
       <div {...stylex.props(styles.grow)} />
       <ZoomControl width={width} />

@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { useEffect, useEffectEvent, useId, type ReactNode } from "react";
+import { useEffect, useEffectEvent, useId, useRef, type ReactNode } from "react";
 import { IconButton } from "../controls/IconButton";
 import { colors, radii, shadows } from "../theme/tokens.stylex";
 
@@ -27,6 +27,7 @@ const styles = stylex.create({
     boxShadow: shadows.dialog,
   },
   wide: { width: "min(720px, calc(100vw - 32px))" },
+  export: { width: "min(580px, calc(100vw - 32px))" },
   studio: { width: "min(1200px, calc(100vw - 32px))", height: "min(820px, calc(100vh - 32px))" },
   header: {
     flexShrink: 0,
@@ -80,18 +81,24 @@ export function Dialog({
   /** Muted text at the start of the footer. */
   note?: ReactNode;
   wide?: boolean;
-  /** Workspace-sized modal (Effect Studio). */
-  size?: "studio";
+  /** A roomier form or a workspace-sized modal. */
+  size?: "export" | "studio";
   dismissable?: boolean;
 }) {
   const titleId = useId();
+  const dialog = useRef<HTMLDivElement>(null);
   const onEscape = useEffectEvent((e: KeyboardEvent) => {
     if (e.key === "Escape" && !e.defaultPrevented && dismissable) onClose();
   });
   useEffect(() => {
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    dialog.current?.querySelector<HTMLElement>("button, input, textarea, [tabindex='0']")?.focus();
     const listener = (e: KeyboardEvent) => onEscape(e);
     window.addEventListener("keydown", listener);
-    return () => window.removeEventListener("keydown", listener);
+    return () => {
+      window.removeEventListener("keydown", listener);
+      previous?.focus({ preventScroll: true });
+    };
   }, []);
 
   return (
@@ -100,10 +107,33 @@ export function Dialog({
       {...stylex.props(styles.backdrop)}
     >
       <div
+        ref={dialog}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        {...stylex.props(styles.dialog, wide && styles.wide, size === "studio" && styles.studio)}
+        onKeyDown={(e) => {
+          if (e.key !== "Tab") return;
+          const focusable = [
+            ...e.currentTarget.querySelectorAll<HTMLElement>(
+              'button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), a[href], [tabindex="0"], [contenteditable="true"]',
+            ),
+          ].filter((el) => el.checkVisibility());
+          const first = focusable[0];
+          const last = focusable.at(-1);
+          if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last?.focus();
+          } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first?.focus();
+          }
+        }}
+        {...stylex.props(
+          styles.dialog,
+          wide && styles.wide,
+          size === "export" && styles.export,
+          size === "studio" && styles.studio,
+        )}
       >
         <header {...stylex.props(styles.header)}>
           <h2 id={titleId} {...stylex.props(styles.title)}>

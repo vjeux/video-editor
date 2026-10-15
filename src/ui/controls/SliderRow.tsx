@@ -43,6 +43,7 @@ export function SliderRow({
         onChange={(v) => onChange(v, gesture.key)}
         onCommitEnd={gesture.renew}
         defaultValue={defaultValue}
+        valueText={`${display(value).toFixed(precision)}${suffix ?? ""}`}
       />
       <NumberField
         label={label}
