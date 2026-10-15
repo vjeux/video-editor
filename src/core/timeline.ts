@@ -324,3 +324,12 @@ export function frameSourceTime(project: Project, clip: MediaClip, t: Seconds): 
   const end = duration == null ? Infinity : Math.max(0, duration - SOURCE_END_MARGIN);
   return Math.min(end, Math.max(0, sourceTimeAt(clip, t)));
 }
+
+export const insertGap = (
+  _project: Project,
+  _trackId: Id,
+  _at: Seconds,
+  _duration: Seconds,
+): Project => {
+  throw new Error("not implemented");
+};

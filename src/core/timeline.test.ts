@@ -14,6 +14,7 @@ import {
 import {
   audibleClips,
   canPlace,
+  insertGap,
   maxClipDuration,
   moveClip,
   moveClips,
@@ -454,5 +455,22 @@ describe("frameSourceTime", () => {
     expect(frameSourceTime(project, clip, 0)).toBe(0);
     expect(frameSourceTime(project, clip, 40)).toBeLessThan(20);
     expect(frameSourceTime(project, clip, 40)).toBeGreaterThan(19.9);
+  });
+});
+
+describe("insertGap", () => {
+  it("pushes clips at or after the time later on that track only", () => {
+    const base = withClips(
+      emptyProject(),
+      videoClip("a", 0, 4),
+      videoClip("b", 4, 4),
+      textClip("t", 5, 1),
+    );
+    const project = insertGap(base, "V1", 4, 1.5);
+    expect(clipsOn(project, "V1")).toEqual([
+      { id: "a", start: 0, duration: 4 },
+      { id: "b", start: 5.5, duration: 4 },
+    ]);
+    expect(clipsOn(project, "T1")).toEqual([{ id: "t", start: 5, duration: 1 }]);
   });
 });
