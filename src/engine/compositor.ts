@@ -38,9 +38,18 @@ export function layoutText(ctx: Ctx2D, clip: TextClip): TextLayout {
   applyTextStyle(ctx, clip);
   const lines = clip.text.split("\n");
   const lineHeight = clip.style.fontSize * LINE_HEIGHT;
-  const textWidth = Math.max(1, ...lines.map((line) => ctx.measureText(line).width));
+  // Ink bounds can overhang the advance width (italics, heavy weights).
+  const textWidth = Math.max(
+    1,
+    ...lines.map((line) => {
+      const m = ctx.measureText(line);
+      return Math.max(m.width, m.actualBoundingBoxLeft + m.actualBoundingBoxRight);
+    }),
+  );
   ctx.restore();
-  const padding = clip.style.background ? clip.style.fontSize * BOX_PADDING : 0;
+  // The outline extends past the glyphs; inset the text so box and bounds include it.
+  const stroke = clip.style.stroke?.width ?? 0;
+  const padding = (clip.style.background ? clip.style.fontSize * BOX_PADDING : 0) + stroke;
   return {
     lines,
     lineHeight,

@@ -22,7 +22,11 @@ const ROTATION_STEP = 15;
 
 const measureCtx = new OffscreenCanvas(1, 1).getContext("2d");
 
-export function boxOf(project: Project, clip: Clip): Box | null {
+/**
+ * The layer's placed box in project pixels. Text depends on which fonts have
+ * loaded, so callers pass `fontsVersion` to re-measure when that changes.
+ */
+export function boxOf(project: Project, clip: Clip, _fontsVersion = 0): Box | null {
   if (!measureCtx) return null;
   const size = layerSize(measureCtx, project, clip);
   const { x, y, scale, rotation } = clip.transform;
