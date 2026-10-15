@@ -27,7 +27,11 @@ Built on [Mediabunny](https://mediabunny.dev/) + WebCodecs · React 19 · StyleX
   over its cut (drag either edge to resize); right-click any of them for more.
 - **What you see is what you export.** The live preview and the export share
   one compositor, and live playback and the export mixdown share one Web Audio
-  scheduler.
+  scheduler. Playback shows exactly the frames the export will write, at the
+  project rate, clocked by the audio you hear.
+- **Any common frame rate.** 23.976, 24, 25, 29.97, 30, 50, 59.94, 60 and
+  120 fps, with drop-frame timecode at 29.97 and 59.94. The first video on an
+  empty timeline sets the canvas and frame rate, like "new sequence from clip".
 - **Direct manipulation.** In the viewer, move, scale and rotate layers on the
   canvas with snapping to the centre and edges. Right-click anything for a
   context menu.
@@ -152,6 +156,10 @@ the timeline.
 | `vp build` | Production build                             |
 
 A pre-commit hook runs `vp check --fix` on staged files.
+
+Add `?perf` to the URL for a live playback overlay on the monitor: composites
+per second, render time, video lag behind the playhead, seeks and dropped
+frames.
 
 ## Keyboard shortcuts
 
