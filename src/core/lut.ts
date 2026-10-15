@@ -54,3 +54,11 @@ export function encodeLut(data: Float32Array): string {
 
 export const decodeLut = (base64: string): Uint8Array =>
   Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+
+export const lutDefinition = (
+  _lut: CubeLut,
+  _id: string,
+  _fileName: string,
+): import("./types").EffectDefinition => {
+  throw new Error("not implemented");
+};

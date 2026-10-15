@@ -12,7 +12,7 @@ import {
   trimClip,
 } from "./timeline";
 import { trackFor, trackLabel } from "./tracks";
-import type { Clip, ClipKind, Id, IdFactory, Project, TextClip } from "./types";
+import type { Clip, ClipKind, EffectDefinition, Id, IdFactory, Project, TextClip } from "./types";
 
 export interface ScriptResult {
   project: Project;
@@ -50,6 +50,7 @@ export async function runScript(
   project: Project,
   code: string,
   newId: IdFactory,
+  _catalog: readonly EffectDefinition[] = [],
 ): Promise<ScriptResult> {
   let draft = project;
   const logs: string[] = [];
