@@ -19,18 +19,18 @@ export interface EditorState {
   tool: Tool;
   monitorVolume: number;
 
-  commit(fn: (project: Project) => Project, opts?: { coalesce?: string }): void;
-  undo(): void;
-  redo(): void;
-  load(project: Project): void;
-  select(ids: Id[]): void;
-  setPlayhead(t: number): void;
-  setPlaying(playing: boolean): void;
-  setView(
+  commit: (fn: (project: Project) => Project, opts?: { coalesce?: string }) => void;
+  undo: () => void;
+  redo: () => void;
+  load: (project: Project) => void;
+  select: (ids: Id[]) => void;
+  setPlayhead: (t: number) => void;
+  setPlaying: (playing: boolean) => void;
+  setView: (
     patch: Partial<
       Pick<EditorState, "pxPerSecond" | "snapping" | "loop" | "tool" | "monitorVolume">
     >,
-  ): void;
+  ) => void;
 }
 
 export type EditorStore = StoreApi<EditorState>;

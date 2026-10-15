@@ -32,7 +32,7 @@ export interface ExportOptions {
   /** Output height in pixels; width follows the project aspect ratio. */
   height: number;
   signal: AbortSignal;
-  onProgress(progress: number): void;
+  onProgress: (progress: number) => void;
 }
 
 export const EXPORT_FORMATS: Record<ExportFormat, { label: string; create(): OutputFormat }> = {
