@@ -17,6 +17,8 @@ import {
   maxClipDuration,
   moveClip,
   moveClips,
+  pasteClips,
+  fillScale,
   placeClip,
   projectDuration,
   removeAsset,
@@ -407,5 +409,37 @@ describe("moveClips", () => {
       { id: "a", start: 6, duration: 2 },
       { id: "new-1", start: 8, duration: 1 },
     ]);
+  });
+});
+
+describe("pasteClips", () => {
+  it("pastes copies keeping relative timing and tracks, starting at the given time", () => {
+    const base = withClips(
+      emptyProject(),
+      videoClip("a", 0, 2),
+      textClip("t", 1, 2),
+      videoClip("b", 10, 2),
+    );
+    const copied = [base.clips.a!, base.clips.t!];
+    const { project, ids: pasted } = pasteClips(base, copied, 20, ids());
+    expect(pasted).toHaveLength(2);
+    expect(clipsOn(project, "V1").map((c) => c.start)).toEqual([0, 10, 20]);
+    expect(clipsOn(project, "T1").map((c) => c.start)).toEqual([1, 21]);
+  });
+
+  it("skips clips whose track no longer exists", () => {
+    const base = withClips(emptyProject(), videoClip("a", 0, 2));
+    const orphan = { ...base.clips.a!, trackId: "gone" };
+    expect(pasteClips(base, [orphan], 5, ids()).ids).toEqual([]);
+  });
+});
+
+describe("fillScale", () => {
+  it("scales a contained layer up until it covers the frame", () => {
+    const base = withClips(emptyProject(), {
+      ...createMediaClip(imageAsset, { id: "img", trackId: "V1", start: 0 }),
+    });
+    expect(fillScale(base, base.clips.img!)).toBeCloseTo(1920 / 1080);
+    expect(fillScale(base, base.clips.a ?? videoClip("v", 0, 1))).toBeCloseTo(1);
   });
 });

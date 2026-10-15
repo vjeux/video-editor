@@ -255,3 +255,16 @@ export function moveClips(
   );
   return lifted.reduce((acc, clip) => placeClip(acc, clip, newId), base);
 }
+
+export const pasteClips = (
+  _project: Project,
+  _clips: readonly Clip[],
+  _at: Seconds,
+  _newId: IdFactory,
+): { project: Project; ids: Id[] } => {
+  throw new Error("not implemented");
+};
+
+export const fillScale = (_project: Project, _clip: Clip): number => {
+  throw new Error("not implemented");
+};
