@@ -97,3 +97,47 @@ describe("setAnimation", () => {
     expect(() => setAnimation(project, "c", "in", anim("nope"))).toThrow(/Unknown animation/);
   });
 });
+
+describe("loop animations", () => {
+  it("cycles for the whole clip with the animation's duration as the period", () => {
+    const c = clip({ animationLoop: anim("pulse", 1) });
+    expect(animationStateAt(c, 10).motion.scale).toBeCloseTo(1);
+    expect(animationStateAt(c, 10.25).motion.scale).toBeGreaterThan(1);
+    expect(animationStateAt(c, 13.25).motion.scale).toBeCloseTo(
+      animationStateAt(c, 10.25).motion.scale,
+    );
+  });
+
+  it("stacks with enter animations", () => {
+    const c = clip({ animationIn: anim("fade", 2), animationLoop: anim("float", 1) });
+    const state = animationStateAt(c, 10.25);
+    expect(state.motion.opacity).toBeLessThan(1);
+    expect(state.motion.dy).not.toBe(0);
+  });
+
+  it("keeps loop presets out of the enter/exit slots and vice versa", () => {
+    const project = withClips(emptyProject(), videoClip("c", 0, 4));
+    expect(() => setAnimation(project, "c", "in", anim("pulse"))).toThrow(/loop/);
+    expect(() => setAnimation(project, "c", "loop", anim("fade"))).toThrow(/loop/);
+    expect(
+      setAnimation(project, "c", "loop", anim("wiggle", 0.5)).clips.c?.animationLoop?.presetId,
+    ).toBe("wiggle");
+  });
+
+  it("offers the creator-favourite enter presets", () => {
+    for (const id of [
+      "elastic",
+      "bounce",
+      "shake",
+      "flicker",
+      "pulse",
+      "breathe",
+      "float",
+      "wiggle",
+      "heartbeat",
+      "spinLoop",
+    ]) {
+      expect(ANIMATION_PRESETS[id]).toBeDefined();
+    }
+  });
+});

@@ -197,8 +197,25 @@ describe("migrateProject", () => {
       delete clip.transitionIn;
       delete clip.animationIn;
       delete clip.animationOut;
+      delete clip.animationLoop;
+      delete clip.speedRamp;
+      delete clip.audioEffects;
     }
     expect(migrateProject(v1)).toEqual(current);
+  });
+
+  it("upgrades version 2 projects with loops, ramps, audio effects and text strokes", () => {
+    const current = withClips(twoClips(), textClip("t", 0, 2));
+    const v2 = JSON.parse(JSON.stringify({ ...current, version: 2 })) as {
+      clips: Record<string, Record<string, unknown> & { style?: Record<string, unknown> }>;
+    };
+    for (const clip of Object.values(v2.clips)) {
+      delete clip.animationLoop;
+      delete clip.speedRamp;
+      delete clip.audioEffects;
+      delete clip.style?.stroke;
+    }
+    expect(migrateProject(v2)).toEqual(current);
   });
 
   it("rejects unknown data", () => {

@@ -44,6 +44,8 @@ const EASING_FNS: Record<Easing, (p: number) => number> = {
   easeInOut: (p) => (p < 0.5 ? 4 * p ** 3 : 1 - (-2 * p + 2) ** 3 / 2),
   backOut: (p) => 1 + (BACK + 1) * (p - 1) ** 3 + BACK * (p - 1) ** 2,
   bounceOut,
+  elasticOut: (p) =>
+    p === 0 || p === 1 ? p : 2 ** (-10 * p) * Math.sin(((p * 10 - 0.75) * 2 * Math.PI) / 3) + 1,
 };
 
 export const EASINGS = Object.keys(EASING_FNS) as Easing[];
@@ -122,7 +124,7 @@ export function animationStateAt(clip: Clip, t: Seconds): AnimationState {
 export function setAnimation(
   project: Project,
   clipId: Id,
-  which: "in" | "out",
+  which: "in" | "out" | "loop",
   animation: ClipAnimation | null,
 ): Project {
   if (animation && !ANIMATION_PRESETS[animation.presetId]) {

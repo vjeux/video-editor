@@ -1,4 +1,5 @@
-import type { TextAnimation } from "../../core/types";
+import { ANIMATION_PRESETS, type AnimationPreset } from "../../core/clip-animations";
+import type { Easing, TextAnimation } from "../../core/types";
 
 export const FONTS = [
   { label: "Inter", family: "Inter Variable" },
@@ -50,3 +51,26 @@ export const PERCENT = {
 };
 
 export const BOX_BACKGROUND = "rgba(0, 0, 0, 0.55)";
+
+export const EASING_LABELS: Record<Easing, string> = {
+  linear: "Linear",
+  easeOut: "Ease out",
+  easeInOut: "Ease in-out",
+  backOut: "Overshoot",
+  bounceOut: "Bounce",
+  elasticOut: "Elastic",
+};
+
+const PRESET_GROUP_LABELS: Record<AnimationPreset["group"], string> = {
+  motion: "Motion",
+  reveal: "Reveal",
+};
+
+/** Enter/exit presets for the animation pickers, grouped as shown. */
+export const ANIMATION_GROUPS = Object.entries(PRESET_GROUP_LABELS).map(([group, label]) => ({
+  label,
+  presets: Object.values(ANIMATION_PRESETS).filter((p) => p.group === group),
+}));
+
+/** Length given to an animation when it is first picked. */
+export const DEFAULT_ANIMATION_DURATION = 0.5;

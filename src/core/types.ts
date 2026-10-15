@@ -58,9 +58,12 @@ export interface TransitionInstance {
   params: Params;
 }
 
-export type Easing = "linear" | "easeOut" | "easeInOut" | "backOut" | "bounceOut";
+export type Easing = "linear" | "easeOut" | "easeInOut" | "backOut" | "bounceOut" | "elasticOut";
 
-/** An enter or exit animation; exits play the preset in reverse. */
+/**
+ * An enter, exit or loop animation. Exits play the preset in reverse; for
+ * loops `duration` is the period of one cycle.
+ */
 export interface ClipAnimation {
   presetId: string;
   duration: Seconds;
@@ -80,6 +83,7 @@ interface ClipBase {
   transitionIn: TransitionInstance | null;
   animationIn: ClipAnimation | null;
   animationOut: ClipAnimation | null;
+  animationLoop: ClipAnimation | null;
 }
 
 export interface MediaClip extends ClipBase {
@@ -89,6 +93,10 @@ export interface MediaClip extends ClipBase {
   offset: Seconds;
   speed: number;
   volume: number;
+  /** Variable-speed curve (a preset id); the clip's average speed stays `speed`. */
+  speedRamp: string | null;
+  /** Web Audio effect chain applied to the clip's sound, in order. */
+  audioEffects: readonly EffectInstance[];
 }
 
 export type TextAnimation = "none" | "fade" | "rise" | "type" | "blur";
@@ -103,6 +111,8 @@ export interface TextStyle {
   align: TextAlign;
   /** Translucent box behind the text; `null` for none. */
   background: string | null;
+  /** Outline around the glyphs (caption style); `null` for none. */
+  stroke: { color: string; width: number } | null;
 }
 
 export interface TextClip extends ClipBase {
@@ -166,7 +176,7 @@ export interface ProjectSettings {
 }
 
 export interface Project {
-  version: 2;
+  version: 3;
   name: string;
   settings: ProjectSettings;
   assets: Record<Id, Asset>;
