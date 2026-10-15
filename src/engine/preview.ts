@@ -1,4 +1,4 @@
-import { layerClips, layersAt } from "../core/layers";
+import { layerClips, layersAt, transitionWindow } from "../core/layers";
 import { frameSourceTime } from "../core/timeline";
 import type { Id, MediaClip, Project } from "../core/types";
 import { resolveEffect } from "../effects/resolve";
@@ -57,11 +57,16 @@ export class PreviewRenderer {
       atRest,
     });
 
+    // Clips about to appear get their decoder to the first frame they will show,
+    // so the cut (or the start of the transition into them) is instant. Clips
+    // already on screen are left alone: rendering is driving their decoders.
     if (playing) {
-      const soon = t + PREWARM;
-      for (const clip of layersAt(project, soon).flatMap(layerClips)) {
-        if (clip.type === "media" && clip.start > t)
-          this.frame(clip, frameSourceTime(project, clip, soon), playing);
+      for (const clip of layersAt(project, t + PREWARM).flatMap(layerClips)) {
+        if (clip.type !== "media" || this.used.has(clip.id) || this.media.image(clip.assetId)) {
+          continue;
+        }
+        const appears = transitionWindow(project, clip)?.start ?? clip.start;
+        this.stream(clip)?.prime(frameSourceTime(project, clip, appears));
       }
     }
 
