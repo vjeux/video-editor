@@ -92,7 +92,8 @@ export function createTextClip(at: { id: Id; trackId: Id; start: number; text: s
     type: "text",
     duration: DEFAULT_TEXT_DURATION,
     style: DEFAULT_TEXT_STYLE,
-    animation: "fade",
+    // No intro by default: a new title must be visible where it is added.
+    animation: "none",
     textMotion: null,
     karaoke: null,
     fadeIn: 0,
