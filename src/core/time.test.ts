@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { formatDuration, formatTimecode, snapToFrame } from "./time";
+import { formatDuration, formatTimecode, frameStart, snapToFrame } from "./time";
 
 describe("formatTimecode", () => {
   it("renders hours, minutes, seconds and frames", () => {
@@ -29,5 +29,14 @@ describe("snapToFrame", () => {
   it("rounds to the nearest frame boundary", () => {
     expect(snapToFrame(1.01, 25)).toBe(1);
     expect(snapToFrame(1.03, 25)).toBe(1.04);
+  });
+});
+
+describe("frameStart", () => {
+  it("is the start of the frame on screen at t", () => {
+    expect(frameStart(1.01, 25)).toBe(1);
+    expect(frameStart(1.039, 25)).toBe(1);
+    expect(frameStart(0.1 + 0.2, 10)).toBeCloseTo(0.3, 9);
+    expect(frameStart(2.5, 30)).toBe(2.5);
   });
 });
