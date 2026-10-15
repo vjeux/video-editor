@@ -34,5 +34,11 @@ export default defineConfig({
   test: {
     include: ["src/**/*.test.ts"],
   },
-  plugins: lazyPlugins(() => [stylex(), react(), babel({ presets: [reactCompilerPreset()] })]),
+  plugins: lazyPlugins(() => [
+    // The StyleX plugin holds file handles open after a run, keeping Vitest
+    // from exiting; tests cover core logic only, so it is skipped there.
+    ...(process.env.VITEST ? [] : [stylex()]),
+    react(),
+    babel({ presets: [reactCompilerPreset()] }),
+  ]),
 });
