@@ -341,7 +341,7 @@ export function fillScale(project: Project, clip: Clip): number {
   return cover / contain;
 }
 
-/** Last decodable instant of a source: a hair before its end. */
+/** Last decodable instant of a source: a hair before its end (half a frame when known). */
 const SOURCE_END_MARGIN = 1 / 120;
 
 /**
@@ -349,8 +349,12 @@ const SOURCE_END_MARGIN = 1 / 120;
  * (transitions extend both sides of a cut), clamped to the media.
  */
 export function frameSourceTime(project: Project, clip: MediaClip, t: Seconds): Seconds {
-  const duration = project.assets[clip.assetId]?.duration;
-  const end = duration == null ? Infinity : Math.max(0, duration - SOURCE_END_MARGIN);
+  const asset = project.assets[clip.assetId];
+  const duration = asset?.duration;
+  const margin = asset?.frameRate
+    ? Math.min(SOURCE_END_MARGIN, 0.5 / asset.frameRate)
+    : SOURCE_END_MARGIN;
+  const end = duration == null ? Infinity : Math.max(0, duration - margin);
   return Math.min(end, Math.max(0, sourceTimeAt(clip, t)));
 }
 
