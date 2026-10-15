@@ -10,3 +10,6 @@ coverage
 .idea
 .vscode/*
 !.vscode/extensions.json
+
+# Local agent/tooling config
+.claude/

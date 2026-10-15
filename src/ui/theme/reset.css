@@ -1,0 +1,51 @@
+/*
+ * Document-level rules StyleX cannot express (element and scrollbar selectors).
+ * Everything is wrapped in :where() so it has zero specificity and any StyleX
+ * class overrides it.
+ */
+:where(*, *::before, *::after) {
+  box-sizing: border-box;
+}
+:where(html, body, #root) {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+:where(body) {
+  background: #0e0f12;
+  color: #e6e8ee;
+  font:
+    13px/1.4 "Inter Variable",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  color-scheme: dark;
+}
+:where(button, input, textarea, select) {
+  font: inherit;
+  color: inherit;
+}
+:where(svg) {
+  display: block;
+  flex: none;
+}
+:where(:focus-visible) {
+  outline: 2px solid #7c6cff;
+  outline-offset: 1px;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #323743;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
