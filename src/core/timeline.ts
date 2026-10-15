@@ -325,11 +325,10 @@ export function frameSourceTime(project: Project, clip: MediaClip, t: Seconds): 
   return Math.min(end, Math.max(0, sourceTimeAt(clip, t)));
 }
 
-export const insertGap = (
-  _project: Project,
-  _trackId: Id,
-  _at: Seconds,
-  _duration: Seconds,
-): Project => {
-  throw new Error("not implemented");
-};
+/** Ripple insert: shifts every clip on `trackId` starting at or after `at` by `duration`. */
+export function insertGap(project: Project, trackId: Id, at: Seconds, duration: Seconds): Project {
+  const moved = clipsOnTrack(project, trackId)
+    .filter((c) => c.start >= at - EPSILON)
+    .map((c) => ({ ...c, start: c.start + duration }));
+  return setClips(project, [], moved);
+}
