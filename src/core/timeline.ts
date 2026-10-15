@@ -295,3 +295,7 @@ export function fillScale(project: Project, clip: Clip): number {
   const cover = Math.max(width / asset.width, height / asset.height);
   return cover / contain;
 }
+
+export const frameSourceTime = (_project: Project, _clip: MediaClip, _t: Seconds): Seconds => {
+  throw new Error("not implemented");
+};

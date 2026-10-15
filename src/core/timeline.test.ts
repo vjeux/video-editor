@@ -27,6 +27,7 @@ import {
   setClipSpeed,
   snapTime,
   sourceTimeAt,
+  frameSourceTime,
   splitAtTime,
   splitClip,
   trackEnd,
@@ -441,5 +442,17 @@ describe("fillScale", () => {
     });
     expect(fillScale(base, base.clips.img!)).toBeCloseTo(1920 / 1080);
     expect(fillScale(base, base.clips.a ?? videoClip("v", 0, 1))).toBeCloseTo(1);
+  });
+});
+
+describe("frameSourceTime", () => {
+  it("follows the clip beyond its edges but stays inside the source media", () => {
+    const project = withClips(emptyProject(), videoClip("a", 10, 4, 3));
+    const clip = project.clips.a as MediaClip;
+    expect(frameSourceTime(project, clip, 12)).toBe(5);
+    expect(frameSourceTime(project, clip, 8)).toBe(1);
+    expect(frameSourceTime(project, clip, 0)).toBe(0);
+    expect(frameSourceTime(project, clip, 40)).toBeLessThan(20);
+    expect(frameSourceTime(project, clip, 40)).toBeGreaterThan(19.9);
   });
 });
