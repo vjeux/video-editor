@@ -1,4 +1,5 @@
 import type {
+  AdjustmentClip,
   Asset,
   ClipKind,
   Id,
@@ -27,7 +28,7 @@ export const DEFAULT_STILL_DURATION = 5;
 export const DEFAULT_TEXT_DURATION = 4;
 
 export const TRACK_ACCEPTS: Record<TrackKind, readonly ClipKind[]> = {
-  video: ["video", "image"],
+  video: ["video", "image", "adjustment"],
   audio: ["audio"],
   text: ["text"],
 };
@@ -36,13 +37,14 @@ export const TRACK_PREFIX: Record<TrackKind, string> = { video: "V", audio: "A",
 
 export function createProject({ name }: { name: string }): Project {
   return {
-    version: 1,
+    version: 2,
     name,
     settings: { width: 1920, height: 1080, fps: 30, background: "#000000" },
     assets: {},
     tracks: [],
     clips: {},
     markers: [],
+    customEffects: {},
   };
 }
 
@@ -65,6 +67,8 @@ export function createMediaClip(
     fadeIn: 0,
     fadeOut: 0,
     transform: DEFAULT_TRANSFORM,
+    effects: [],
+    transitionIn: null,
   };
 }
 
@@ -78,5 +82,22 @@ export function createTextClip(at: { id: Id; trackId: Id; start: number; text: s
     fadeIn: 0,
     fadeOut: 0.3,
     transform: DEFAULT_TRANSFORM,
+    effects: [],
+    transitionIn: null,
+  };
+}
+
+export const DEFAULT_ADJUSTMENT_DURATION = 5;
+
+export function createAdjustmentClip(at: { id: Id; trackId: Id; start: number }): AdjustmentClip {
+  return {
+    ...at,
+    type: "adjustment",
+    duration: DEFAULT_ADJUSTMENT_DURATION,
+    fadeIn: 0,
+    fadeOut: 0,
+    transform: DEFAULT_TRANSFORM,
+    effects: [],
+    transitionIn: null,
   };
 }

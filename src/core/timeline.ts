@@ -19,7 +19,7 @@ export function findClip(project: Project, id: Id): Clip {
 }
 
 export function clipKind(project: Project, clip: Clip): ClipKind {
-  if (clip.type === "text") return "text";
+  if (clip.type !== "media") return clip.type;
   const asset = project.assets[clip.assetId];
   if (!asset) throw new Error(`Clip ${clip.id} references missing asset ${clip.assetId}`);
   return asset.kind;
@@ -102,7 +102,7 @@ export function moveClip(
 }
 
 export function maxClipDuration(project: Project, clip: Clip): Seconds {
-  if (clip.type === "text") return Infinity;
+  if (clip.type !== "media") return Infinity;
   const duration = project.assets[clip.assetId]?.duration;
   if (duration == null) return Infinity;
   return (duration - clip.offset) / clip.speed;
