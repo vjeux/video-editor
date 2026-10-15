@@ -13,17 +13,17 @@ import {
 import { BUILTIN_EFFECTS } from "../effects/library";
 import { noticeStore } from "../store/notices";
 import { trackFor } from "../core/tracks";
-import type { Asset, Id, Project } from "../core/types";
+import type { Asset, Id } from "../core/types";
 import { saveMedia } from "../engine/persistence";
 import { editorStore, mediaStore } from "../store";
 import { PEAKS_PER_SECOND } from "../store/media";
+import { adoptSourceFormat } from "../core/source-format";
 import { media, newId, player } from "./engine";
 import { reportError } from "./errors";
 
 const FILMSTRIP_HEIGHT = 72;
 const POSTER_HEIGHT = 180;
 const MAX_FILMSTRIP_FRAMES = 120;
-const MAX_PROJECT_EDGE = 3840;
 
 function computePeaks(buffer: AudioBuffer): Float32Array {
   const bucket = Math.max(1, Math.floor(buffer.sampleRate / PEAKS_PER_SECOND));
@@ -74,18 +74,6 @@ export async function openAsset(asset: Asset, file: Blob) {
   }
 }
 
-/** Matches the canvas to the first video on an empty timeline, like "new sequence from clip". */
-function adoptFormat(project: Project, asset: Asset): Project {
-  if (Object.keys(project.clips).length > 0 || asset.kind === "audio" || !asset.width)
-    return project;
-  const scale = Math.min(1, MAX_PROJECT_EDGE / Math.max(asset.width, asset.height));
-  const even = (n: number) => Math.round((n * scale) / 2) * 2;
-  return {
-    ...project,
-    settings: { ...project.settings, width: even(asset.width), height: even(asset.height) },
-  };
-}
-
 export function addAssetToTimeline(
   assetId: Id,
   at: { trackId?: Id; start?: number } = {},
@@ -102,7 +90,7 @@ export function addAssetToTimeline(
     const start = at.start ?? trackEnd(target.project, target.trackId);
     const clip = createMediaClip(asset, { id: clipId, trackId: target.trackId, start });
     placed = true;
-    return placeClip(adoptFormat(target.project, asset), clip, newId);
+    return placeClip(adoptSourceFormat(target.project, asset), clip, newId);
   });
   if (!placed) return null;
   editorStore.getState().select([clipId]);

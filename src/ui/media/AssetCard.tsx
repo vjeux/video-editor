@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { assetMenu, openMenu } from "../../app/menus";
 import { addAssetToTimeline, deleteAsset } from "../../app/assets";
-import { formatDuration } from "../../core/time";
+import { formatDuration, formatFps } from "../../core/time";
 import type { Asset, AssetKind } from "../../core/types";
 import { useMedia } from "../../store";
 import { BitmapCanvas } from "../controls/BitmapCanvas";
@@ -64,6 +64,18 @@ const styles = stylex.create({
     borderRadius: 3,
     backgroundColor: "rgba(0, 0, 0, 0.6)",
     color: "#eee",
+    fontFamily: fonts.mono,
+    fontSize: 10,
+  },
+  fps: {
+    position: "absolute",
+    left: 4,
+    bottom: 4,
+    paddingBlock: 1,
+    paddingInline: 4,
+    borderRadius: 3,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    color: "#cfd3dc",
     fontFamily: fonts.mono,
     fontSize: 10,
   },
@@ -149,6 +161,9 @@ export function AssetCard({ asset, used }: { asset: Asset; used: boolean }) {
         {used && <span title="Used in timeline" {...stylex.props(styles.used)} />}
         {asset.duration !== null && (
           <span {...stylex.props(styles.duration)}>{formatDuration(asset.duration)}</span>
+        )}
+        {asset.frameRate !== undefined && (
+          <span {...stylex.props(styles.fps)}>{formatFps(asset.frameRate)} fps</span>
         )}
         {broken && <span {...stylex.props(styles.badge)}>{status}</span>}
       </div>

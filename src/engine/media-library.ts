@@ -16,6 +16,8 @@ export interface ProbeResult {
   width: number;
   height: number;
   hasAudio: boolean;
+  /** Recorded frame rate (Mediabunny's best guess from packet timing); videos only. */
+  frameRate?: number;
 }
 
 interface VideoEntry {
@@ -95,7 +97,16 @@ export class MediaLibrary {
           keyframes: null,
           indexing: false,
         });
-        return { kind: "video", duration, width, height, hasAudio: !!audio };
+        const metrics = await video.computeFrameRateMetrics().catch(() => null);
+        const frameRate = metrics?.bestGuessFrameRate;
+        return {
+          kind: "video",
+          duration,
+          width,
+          height,
+          hasAudio: !!audio,
+          ...(frameRate && frameRate > 0 && { frameRate }),
+        };
       }
       if (audio) {
         this.entries.set(id, { kind: "audio", input, audio });
