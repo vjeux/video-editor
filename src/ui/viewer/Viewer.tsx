@@ -7,6 +7,8 @@ import { PanelHeader } from "../controls/PanelHeader";
 import { Select } from "../controls/Select";
 import { FORMAT_PRESETS } from "../formats";
 import { colors, radii, shadows } from "../theme/tokens.stylex";
+import { PerfOverlay } from "./PerfOverlay";
+import { SHOW_PERF } from "./perf-flag";
 import { SafeArea } from "./SafeArea";
 import { SelectionOverlay } from "./SelectionOverlay";
 import { Transport } from "./Transport";
@@ -164,6 +166,7 @@ export function Viewer() {
         >
           <canvas ref={canvas} {...stylex.props(styles.canvas)} />
           {safe && <SafeArea />}
+          {SHOW_PERF && <PerfOverlay />}
         </div>
         <SelectionOverlay
           left={rect.left}

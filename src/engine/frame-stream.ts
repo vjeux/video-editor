@@ -1,4 +1,5 @@
 import type { CanvasSink, WrappedCanvas } from "mediabunny";
+import { perf } from "./perf";
 
 /** Jumps further than this restart decoding at the target instead of decoding through. */
 const SEEK_THRESHOLD = 0.75;
@@ -42,7 +43,9 @@ export class FrameStream {
       this.next = null;
       this.pull();
     }
-    return this.current?.canvas ?? null;
+    const shown = this.current;
+    if (shown) perf.frameShown(t - shown.timestamp, t > shown.timestamp + shown.duration + EPSILON);
+    return shown?.canvas ?? null;
   }
 
   /** The prefetched frame is ahead of `t` but within decode-through range. */
@@ -58,6 +61,7 @@ export class FrameStream {
       return;
     }
     this.seeking = true;
+    const startedAt = performance.now();
     void this.iterator?.return();
     const iterator = this.sink.canvases(t);
     this.iterator = iterator;
@@ -68,6 +72,7 @@ export class FrameStream {
         const first = await iterator.next();
         if (this.disposed || this.iterator !== iterator) return;
         if (!first.done) this.current = first.value;
+        perf.seek(performance.now() - startedAt);
         this.pull();
         this.onFrame();
       } finally {

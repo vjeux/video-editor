@@ -29,6 +29,7 @@ import {
   type Drawable,
   type RenderServices,
 } from "./compositor";
+import { perf, type ExportStats } from "./perf";
 import { createGpu } from "./gpu";
 import type { MediaLibrary } from "./media-library";
 
@@ -176,10 +177,31 @@ export async function exportProject(
   });
   if (!videoCodec)
     throw new Error(`This browser cannot encode video for ${opts.format.toUpperCase()}`);
-  const video = new CanvasSource(canvas, { codec: videoCodec, bitrate: QUALITIES[opts.quality] });
+  const video = new CanvasSource(canvas, {
+    codec: videoCodec,
+    bitrate: QUALITIES[opts.quality],
+    onEncoderConfig: (config) => (stats.codec = config.codec),
+  });
   output.addVideoTrack(video, { frameRate: fps });
 
-  const mix = await mixdown(project, media, duration);
+  const startedAt = performance.now();
+  const stats: ExportStats = {
+    frames: 0,
+    seconds: 0,
+    decode: 0,
+    render: 0,
+    encode: 0,
+    mixdown: 0,
+    codec: null,
+  };
+  const timed = async <T>(stage: "decode" | "encode" | "mixdown", work: Promise<T>): Promise<T> => {
+    const from = performance.now();
+    const result = await work;
+    stats[stage] += (performance.now() - from) / 1000;
+    return result;
+  };
+
+  const mix = await timed("mixdown", mixdown(project, media, duration));
   const audioCodec = mix
     ? await getFirstEncodableAudioCodec(format.getSupportedAudioCodecs(), {
         numberOfChannels: CHANNELS,
@@ -209,11 +231,13 @@ export async function exportProject(
   try {
     for (const [i, t] of frameTimes.entries()) {
       if (opts.signal.aborted) throw new DOMException("Export canceled", "AbortError");
-      await frames.advance(t);
+      await timed("decode", frames.advance(t));
+      const renderFrom = performance.now();
       renderFrame(ctx, project, t, services);
+      stats.render += (performance.now() - renderFrom) / 1000;
       // A shader that fails to compile would otherwise export silently unfiltered.
       if (gpuErrors[0]) throw gpuErrors[0];
-      await video.add(t, 1 / fps);
+      await timed("encode", video.add(t, 1 / fps));
 
       while (audio && mix && audioWritten <= t && audioWritten < duration) {
         const chunk = sliceAudio(mix, audioWritten, Math.min(duration, audioWritten + AUDIO_CHUNK));
@@ -223,6 +247,11 @@ export async function exportProject(
       opts.onProgress((i + 1) / frameCount);
     }
     await output.finalize();
+    perf.lastExport = {
+      ...stats,
+      frames: frameCount,
+      seconds: (performance.now() - startedAt) / 1000,
+    };
   } catch (error) {
     await output.cancel();
     throw error;

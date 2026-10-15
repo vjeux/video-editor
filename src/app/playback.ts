@@ -1,4 +1,5 @@
 import { projectDuration } from "../core/timeline";
+import { perf } from "../engine/perf";
 import { PreviewRenderer } from "../engine/preview";
 import { editorStore } from "../store";
 import { media, player } from "./engine";
@@ -86,7 +87,9 @@ export function attachViewer(canvas: HTMLCanvasElement): () => void {
       height: canvas.height,
       editing: s.editingText,
     };
+    const from = performance.now();
     preview.render(ctx, s.project, t, player.playing, s.editingText);
+    perf.composite(performance.now() - from);
   };
   tick();
 
