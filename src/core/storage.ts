@@ -15,3 +15,10 @@ export function storageFit(
   const free = quota - usage;
   return { fits: bytes <= free - quota * HEADROOM, free };
 }
+
+export const formatBytes = (bytes: number) =>
+  bytes >= 1e9
+    ? `${(bytes / 1e9).toFixed(2)} GB`
+    : bytes >= 1e6
+      ? `${(bytes / 1e6).toFixed(1)} MB`
+      : `${Math.max(1, Math.round(bytes / 1e3))} KB`;

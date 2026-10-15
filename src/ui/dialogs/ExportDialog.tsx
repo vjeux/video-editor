@@ -3,6 +3,7 @@ import { startTransition, useActionState, useEffect, useId, useRef, useState } f
 import { media } from "../../app/engine";
 import { reportError } from "../../app/errors";
 import { canStreamToFile, chooseSaveFile } from "../../app/save-file";
+import { formatBytes } from "../../core/storage";
 import { formatFps, formatTimecode } from "../../core/time";
 import { projectDuration } from "../../core/timeline";
 import type { Project } from "../../core/types";
@@ -69,13 +70,6 @@ interface Progress {
 }
 
 const IDLE: Result = { kind: "idle" };
-
-const formatBytes = (bytes: number) =>
-  bytes >= 1e9
-    ? `${(bytes / 1e9).toFixed(2)} GB`
-    : bytes >= 1e6
-      ? `${(bytes / 1e6).toFixed(1)} MB`
-      : `${Math.max(1, Math.round(bytes / 1e3))} KB`;
 
 /** Past this, an export built in memory (no save picker) risks not fitting. */
 const LONG_IN_MEMORY_EXPORT = 15 * 60;

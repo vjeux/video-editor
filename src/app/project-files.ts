@@ -1,11 +1,12 @@
 import { packProject, projectFilename, rekeyBundle, unpackProject } from "../core/project-file";
-import { deleteMedia, loadMedia, saveMedia } from "../engine/persistence";
+import { loadMedia } from "../engine/persistence";
 import { editorStore, mediaStore } from "../store";
 import { noticeStore } from "../store/notices";
 import { sessionStore } from "../store/session";
 import { importFiles, openAsset } from "./assets";
 import { newId } from "./engine";
 import { importEffectFiles, isEffectFile } from "./effects";
+import { keepSourceMedia } from "./media-storage";
 import { pause } from "./playback";
 
 export const isProjectFile = (file: File) => /\.cutline$/i.test(file.name);
@@ -34,17 +35,9 @@ export async function saveProjectFile() {
 
 export async function openProjectFile(file: File) {
   const bundle = rekeyBundle(await unpackProject(file), newId);
-  // Persist before switching. A failed write leaves the current project untouched.
-  const written: string[] = [];
-  try {
-    for (const [id, blob] of bundle.media) {
-      await saveMedia(id, blob);
-      written.push(id);
-    }
-  } catch (error) {
-    await Promise.allSettled(written.map(deleteMedia));
-    throw error;
-  }
+  // Persist before switching. A failed write leaves the current project
+  // untouched; media that does not fit stays usable for this session.
+  await keepSourceMedia(bundle.media, "This project's media");
   pause();
   const editor = editorStore.getState();
   editor.select([]);

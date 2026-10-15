@@ -15,7 +15,9 @@ Built on [Mediabunny](https://mediabunny.dev/) + WebCodecs · React 19 · StyleX
 
 - **Everything stays on your device.** Decoding, preview and encoding use
   WebCodecs through Mediabunny. Projects and their media autosave to IndexedDB
-  and reopen on reload.
+  and reopen on reload. Cutline asks the browser to keep that storage and
+  checks there is room before copying a file in; media that doesn't fit still
+  works until you close the tab, and a notice says it won't survive a reload.
 - **Portable projects.** Use **☰ → Save project** to download a `.cutline` bundle
   with the timeline, custom effects and original media. **Open** restores it or
   imports ordinary media files. The [versioned project format](docs/project-format.md)

@@ -15,12 +15,12 @@ import { BUILTIN_EFFECTS } from "../effects/library";
 import { noticeStore } from "../store/notices";
 import { trackFor } from "../core/tracks";
 import type { Asset, Id } from "../core/types";
-import { saveMedia } from "../engine/persistence";
 import { editorStore, mediaStore } from "../store";
 import { PEAKS_PER_SECOND } from "../store/media";
 import { adoptSourceFormat } from "../core/source-format";
 import { media, newId, player } from "./engine";
 import { reportError } from "./errors";
+import { keepSourceMedia } from "./media-storage";
 
 const FILMSTRIP_HEIGHT = 72;
 const POSTER_HEIGHT = 180;
@@ -110,7 +110,7 @@ export async function importFiles(files: Iterable<File>, place?: { trackId?: Id;
       const probe = await media.load(id, file);
       const asset: Asset = { id, name: file.name, ...probe };
       editorStore.getState().commit((p) => ({ ...p, assets: { ...p.assets, [id]: asset } }));
-      void saveMedia(id, file).catch(reportError);
+      void keepSourceMedia(new Map([[id, file]]), `“${file.name}”`).catch(reportError);
       void hydrate(asset).catch(reportError);
       if (start !== undefined) {
         const clipId = addAssetToTimeline(id, { trackId: place?.trackId, start });
@@ -153,7 +153,7 @@ export async function freezeFrame(duration = 1.5, zoom = true) {
   const id = newId();
   const probe = await media.load(id, file);
   const asset: Asset = { id, name: file.name, ...probe };
-  void saveMedia(id, file).catch(reportError);
+  void keepSourceMedia(new Map([[id, file]]), "The freeze frame").catch(reportError);
   void hydrate(asset).catch(reportError);
 
   const stillId = newId();
