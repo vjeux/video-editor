@@ -188,3 +188,9 @@ export function moveAudioEffect(project: Project, clipId: Id, id: Id, index: num
     return rest;
   });
 }
+
+export const MAX_AUDIO_TAIL = 30;
+
+export function audioTail(_effects: readonly EffectInstance[]): number {
+  throw new Error("Not implemented");
+}

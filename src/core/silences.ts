@@ -142,3 +142,17 @@ export function suggestThreshold(levels: Float32Array): number {
   const threshold = Math.round(noise + (speech - noise) * THRESHOLD_POSITION);
   return Math.min(THRESHOLD_RANGE[1], Math.max(THRESHOLD_RANGE[0], threshold));
 }
+
+export class LevelStream {
+  constructor(_sampleRate: number, _frame: Seconds) {
+    throw new Error("Not implemented");
+  }
+
+  add(_channels: readonly Float32Array[], _at: number): void {
+    throw new Error("Not implemented");
+  }
+
+  levels(): Float32Array {
+    throw new Error("Not implemented");
+  }
+}
