@@ -41,16 +41,25 @@ export function CaptionPresets({ clip }: { clip: TextClip }) {
           onClick={() =>
             updateClip(clip.id, (c) =>
               c.type === "text"
-                ? { ...c, style: { ...c.style, ...preset.style }, animation: preset.animation }
+                ? {
+                    ...c,
+                    style: { ...c.style, ...preset.style },
+                    animation: "none",
+                    textMotion: preset.textMotion,
+                    karaoke: preset.karaoke,
+                  }
                 : c,
             )
           }
           {...stylex.props(
             styles.preset,
             styles.look(
-              preset.style.fontFamily,
-              preset.style.color,
-              preset.style.stroke?.color ?? "transparent",
+              preset.style.fontFamily ?? "inherit",
+              preset.karaoke?.color ??
+                preset.style.gradient?.from ??
+                preset.style.color ??
+                "#ffffff",
+              preset.style.stroke?.color ?? preset.style.glow?.color ?? "transparent",
             ),
           )}
         >
