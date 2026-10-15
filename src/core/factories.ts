@@ -96,6 +96,7 @@ export function createTextClip(at: { id: Id; trackId: Id; start: number; text: s
     animation: "none",
     textMotion: null,
     karaoke: null,
+    words: null,
     fadeIn: 0,
     fadeOut: 0.3,
     transform: DEFAULT_TRANSFORM,

@@ -144,6 +144,13 @@ export interface Karaoke {
   mode: "fill" | "pop" | "box";
 }
 
+/** A spoken word and when it is said. */
+export interface TimedWord {
+  text: string;
+  start: Seconds;
+  end: Seconds;
+}
+
 export interface TextClip extends ClipBase {
   type: "text";
   text: string;
@@ -151,6 +158,8 @@ export interface TextClip extends ClipBase {
   animation: TextAnimation;
   textMotion: TextMotion | null;
   karaoke: Karaoke | null;
+  /** When each word is spoken, relative to the clip's start (from auto-captions). */
+  words: readonly TimedWord[] | null;
 }
 
 /** Applies its effects to everything composited below it while active. */
