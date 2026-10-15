@@ -6,6 +6,10 @@ import { useEditor } from "../../store";
 import { Segmented } from "../controls/Segmented";
 import { SliderRow } from "../controls/SliderRow";
 import { colors } from "../theme/tokens.stylex";
+import { AnimationGroup } from "./AnimationGroup";
+import { AudioEffectsGroup } from "./AudioEffectsGroup";
+import { EffectsGroup } from "./EffectsGroup";
+import { SpeedRampRow } from "./SpeedRampRow";
 import { FadeGroup } from "./FadeGroup";
 import { Group } from "./Group";
 import { PERCENT, SPEEDS } from "./options";
@@ -59,9 +63,13 @@ export function MediaInspector({ clip }: { clip: MediaClip }) {
             suffix="×"
             onChange={setSpeed}
           />
+          <SpeedRampRow clip={clip} />
         </Group>
       )}
+      {hasAudio && <AudioEffectsGroup clip={clip} />}
+      {kind !== "audio" && <EffectsGroup clip={clip} />}
       <FadeGroup clip={clip} />
+      {kind !== "audio" && <AnimationGroup clip={clip} />}
     </>
   );
 }
