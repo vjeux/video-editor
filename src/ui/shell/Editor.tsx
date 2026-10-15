@@ -13,6 +13,7 @@ import { sessionRestored, startAutosave } from "../../app/session";
 import { Inspector } from "../inspector/Inspector";
 import { LibraryPanel } from "../library/LibraryPanel";
 import { ContextMenu } from "../menu/ContextMenu";
+import { TooltipLayer } from "./TooltipLayer";
 import { Drawer } from "./Drawer";
 import { DropOverlay } from "./DropOverlay";
 import { studioStore, useStudio } from "../../store/studio";
@@ -179,6 +180,7 @@ export function Editor() {
       {dropping && <DropOverlay />}
       {!SUPPORTED && <UnsupportedBanner />}
       <ContextMenu />
+      <TooltipLayer />
       <Notices />
     </div>
   );
