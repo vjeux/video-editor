@@ -1,6 +1,11 @@
 import { setAnimation } from "./clip-animations";
 import { addEffect, setTransition, updateEffect } from "./effects";
-import { createAdjustmentClip, createMediaClip, createTextClip } from "./factories";
+import {
+  createAdjustmentClip,
+  createMediaClip,
+  createTextClip,
+  DEFAULT_ADJUSTMENT_DURATION,
+} from "./factories";
 import {
   clipEnd,
   clipKind,
@@ -13,7 +18,7 @@ import {
   trackEnd,
   trimClip,
 } from "./timeline";
-import { trackFor, trackLabel } from "./tracks";
+import { overlayTrackFor, trackFor, trackLabel } from "./tracks";
 import type {
   Clip,
   ClipAnimation,
@@ -267,16 +272,16 @@ export async function runScript(
       return catalog.map(({ id, name, kind, category }) => ({ id, name, kind, category }));
     },
     addAdjustment(opts: { start?: number; duration?: number; track?: string } = {}) {
+      const start = opts.start ?? 0;
+      const duration = opts.duration ?? DEFAULT_ADJUSTMENT_DURATION;
       const routed = opts.track
         ? { project: draft, trackId: trackId(opts.track) }
-        : trackFor(draft, "adjustment", newId);
+        : overlayTrackFor(draft, "adjustment", start, duration, newId);
       draft = routed.project;
-      const base = createAdjustmentClip({
-        id: newId(),
-        trackId: routed.trackId,
-        start: opts.start ?? 0,
+      return place({
+        ...createAdjustmentClip({ id: newId(), trackId: routed.trackId, start }),
+        duration,
       });
-      return place({ ...base, duration: opts.duration ?? base.duration });
     },
     addMarker(time: number, label = "") {
       draft = {

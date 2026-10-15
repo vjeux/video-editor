@@ -1,4 +1,5 @@
 import { createTrack, TRACK_ACCEPTS, TRACK_PREFIX } from "./factories";
+import { clipEnd, clipsOnTrack } from "./timeline";
 import type { ClipKind, Id, IdFactory, Project, Track, TrackKind } from "./types";
 
 const TRACK_NAMES: Record<TrackKind, string> = { video: "Video", audio: "Audio", text: "Titles" };
@@ -63,12 +64,26 @@ export function trackLabel(project: Project, trackId: Id): string {
   return `${TRACK_PREFIX[track.kind]}${number}`;
 }
 
-export const overlayTrackFor = (
-  _project: Project,
-  _kind: ClipKind,
-  _start: number,
-  _duration: number,
-  _newId: IdFactory,
-): { project: Project; trackId: Id } => {
-  throw new Error("not implemented");
-};
+/**
+ * A track for a clip that should sit over the footage in [start, start + duration)
+ * (adjustment layers, overlays): the nearest free compatible track above the
+ * topmost visual clip there, or a new track above it. Never carves into footage.
+ */
+export function overlayTrackFor(
+  project: Project,
+  kind: ClipKind,
+  start: number,
+  duration: number,
+  newId: IdFactory,
+): { project: Project; trackId: Id } {
+  const end = start + duration;
+  const busy = (trackId: Id) =>
+    clipsOnTrack(project, trackId).some((c) => c.start < end && clipEnd(c) > start);
+  const covered = project.tracks.findIndex((t) => t.kind !== "audio" && busy(t.id));
+  const ceiling = covered === -1 ? project.tracks.length : covered;
+  const candidates = project.tracks
+    .slice(0, ceiling)
+    .filter((t) => !t.locked && TRACK_ACCEPTS[t.kind].includes(kind) && !busy(t.id));
+  const nearest = candidates.at(covered === -1 ? 0 : -1);
+  return nearest ? { project, trackId: nearest.id } : addTrack(project, KIND_TRACK[kind], newId());
+}
