@@ -256,15 +256,31 @@ export function moveClips(
   return lifted.reduce((acc, clip) => placeClip(acc, clip, newId), base);
 }
 
-export const pasteClips = (
-  _project: Project,
-  _clips: readonly Clip[],
-  _at: Seconds,
-  _newId: IdFactory,
-): { project: Project; ids: Id[] } => {
-  throw new Error("not implemented");
-};
+/** Places copies of `clips` so the earliest starts at `at`, keeping relative timing and tracks. */
+export function pasteClips(
+  project: Project,
+  clips: readonly Clip[],
+  at: Seconds,
+  newId: IdFactory,
+): { project: Project; ids: Id[] } {
+  const origin = Math.min(...clips.map((c) => c.start));
+  const ids: Id[] = [];
+  let next = project;
+  for (const clip of clips) {
+    if (!canPlace(next, clipKind(next, clip), clip.trackId)) continue;
+    const copy = { ...clip, id: newId(), start: at + clip.start - origin };
+    next = placeClip(next, copy, newId);
+    ids.push(copy.id);
+  }
+  return { project: next, ids };
+}
 
-export const fillScale = (_project: Project, _clip: Clip): number => {
-  throw new Error("not implemented");
-};
+/** Scale at which a fitted (contained) layer covers the whole frame. */
+export function fillScale(project: Project, clip: Clip): number {
+  const asset = clip.type === "media" ? project.assets[clip.assetId] : undefined;
+  if (!asset?.width || !asset.height) return 1;
+  const { width, height } = project.settings;
+  const contain = Math.min(width / asset.width, height / asset.height);
+  const cover = Math.max(width / asset.width, height / asset.height);
+  return cover / contain;
+}

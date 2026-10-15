@@ -31,9 +31,11 @@ describe("runScript", () => {
       });
     `);
     const titles = Object.values(project.clips).filter((c): c is TextClip => c.type === "text");
-    expect(titles.map((t) => [t.text, t.start]).sort()).toEqual([
-      ["Apr 12", 4],
+    expect(
+      titles.map((t) => [t.text, t.start]).sort((a, b) => Number(a[1]) - Number(b[1])),
+    ).toEqual([
       ["Feb 12", 0],
+      ["Apr 12", 4],
     ]);
   });
 
