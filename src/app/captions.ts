@@ -22,8 +22,8 @@ export interface CaptionRequest {
   options: CaptionOptions;
 }
 
-/** A clip that can be captioned: media that carries sound. */
-export function captionableClip(project: Project, clipId: Id): MediaClip | null {
+/** A media clip that carries sound (what captions and silence removal work on). */
+export function clipWithSound(project: Project, clipId: Id): MediaClip | null {
   const clip = project.clips[clipId];
   return clip?.type === "media" && project.assets[clip.assetId]?.hasAudio ? clip : null;
 }
@@ -36,7 +36,7 @@ export async function generateCaptions(
   request: CaptionRequest,
   { signal, onProgress }: { signal: AbortSignal; onProgress: (p: TranscribeProgress) => void },
 ): Promise<number> {
-  const clip = captionableClip(state().project, request.clipId);
+  const clip = clipWithSound(state().project, request.clipId);
   if (!clip) throw new Error("Captions need a clip with sound");
   const audio = await media.audioBuffer(clip.assetId);
   if (!audio) throw new Error("This clip's audio could not be decoded");
@@ -52,7 +52,7 @@ export async function generateCaptions(
     onProgress,
   });
   // The clip may have moved while transcribing: place words where it is now.
-  const current = captionableClip(state().project, request.clipId) ?? clip;
+  const current = clipWithSound(state().project, request.clipId) ?? clip;
   const chunks = chunkCaptions(wordsOnTimeline(current, words), request.options);
   if (chunks.length === 0) {
     noticeStore.getState().push("info", "No speech found in this clip");

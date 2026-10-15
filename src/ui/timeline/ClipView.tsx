@@ -12,6 +12,7 @@ import { transitionWindow } from "../../core/layers";
 import { clipEnd, clipKind, clipsOnTrack } from "../../core/timeline";
 import type { Clip, Project } from "../../core/types";
 import { useEditor } from "../../store";
+import { useSilences } from "../../store/silences";
 import { colors, fonts } from "../theme/tokens.stylex";
 import { AnimationCap } from "./AnimationCap";
 import { capLabel } from "./cap-label";
@@ -157,6 +158,19 @@ const styles = stylex.create({
     },
   },
   barSelected: { opacity: 1 },
+  /** A pause that silence removal would cut. */
+  silence: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    zIndex: 2,
+    pointerEvents: "none",
+    backgroundColor: "rgba(255, 93, 108, 0.28)",
+    backgroundImage:
+      "repeating-linear-gradient(135deg, rgba(255, 93, 108, 0.45) 0 4px, transparent 4px 9px)",
+    boxShadow: "inset 1px 0 0 rgba(255, 93, 108, 0.9), inset -1px 0 0 rgba(255, 93, 108, 0.9)",
+  },
+  span: (left: number, width: number) => ({ left, width }),
 });
 
 /** Clips shorter than this have no room for the chip strip under their label. */
@@ -220,6 +234,7 @@ export function ClipView({
 }) {
   const pps = useEditor((s) => s.pxPerSecond);
   const select = useEditor((s) => s.select);
+  const silences = useSilences((s) => (s.preview?.clipId === clip.id ? s.preview.spans : null));
   const blade = useEditor((s) => s.tool === "blade");
   const track = project.tracks.find((t) => t.id === clip.trackId);
   const kind = clipKind(project, clip);
@@ -342,6 +357,18 @@ export function ClipView({
           onMore={() => select([clip.id])}
         />
       )}
+      {silences?.map((span) => (
+        <span
+          key={span.start}
+          {...stylex.props(
+            styles.silence,
+            styles.span(
+              timeToX(span.start - clip.start, pps),
+              Math.max(1, timeToX(span.end - span.start, pps)),
+            ),
+          )}
+        />
+      ))}
       {clip.type === "media" && clip.speed !== 1 && (
         <span {...stylex.props(styles.speed)}>{clip.speed}×</span>
       )}

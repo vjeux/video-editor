@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { startTransition, useActionState, useEffect, useRef, useState } from "react";
-import { captionableClip, generateCaptions } from "../../app/captions";
+import { clipWithSound, generateCaptions } from "../../app/captions";
 import { reportError } from "../../app/errors";
 import {
   CAPTION_MODELS,
@@ -45,7 +45,7 @@ const statusOf = (p: TranscribeProgress) =>
  */
 export function CaptionsDialog({ clipId, onClose }: { clipId: Id; onClose: () => void }) {
   const clipName = useEditor((s) => {
-    const clip = captionableClip(s.project, clipId);
+    const clip = clipWithSound(s.project, clipId);
     return clip ? (s.project.assets[clip.assetId]?.name ?? "clip") : null;
   });
   const [lookName, setLookName] = useState("Hormozi");

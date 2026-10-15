@@ -9,6 +9,7 @@ import { colors } from "../theme/tokens.stylex";
 import { AnimationGroup } from "./AnimationGroup";
 import { AudioEffectsGroup } from "./AudioEffectsGroup";
 import { CaptionsGroup } from "./CaptionsGroup";
+import { SilenceGroup } from "./SilenceGroup";
 import { EffectsGroup } from "./EffectsGroup";
 import { SpeedRampRow } from "./SpeedRampRow";
 import { FadeGroup } from "./FadeGroup";
@@ -68,6 +69,7 @@ export function MediaInspector({ clip }: { clip: MediaClip }) {
         </Group>
       )}
       {hasAudio && <AudioEffectsGroup clip={clip} />}
+      {hasAudio && <SilenceGroup clip={clip} />}
       {hasAudio && <CaptionsGroup clipId={clip.id} />}
       {kind !== "audio" && <EffectsGroup clip={clip} />}
       <FadeGroup clip={clip} />
