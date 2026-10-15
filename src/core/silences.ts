@@ -126,6 +126,19 @@ export function removeSpans(
 export const spansLength = (spans: readonly Span[]): Seconds =>
   clean(spans.reduce((sum, s) => sum + s.end - s.start, 0));
 
-export function suggestThreshold(_levels: Float32Array): number {
-  throw new Error("Not implemented");
+/** Where between noise floor and speech the suggested threshold sits. */
+const THRESHOLD_POSITION = 0.3;
+const THRESHOLD_RANGE = [-60, -20] as const;
+
+/**
+ * A starting threshold for this recording: 30% of the way from its noise
+ * floor (10th percentile level) to its speech (90th percentile).
+ */
+export function suggestThreshold(levels: Float32Array): number {
+  const sorted = Float32Array.from(levels).sort();
+  const at = (q: number) => sorted[Math.floor(q * (sorted.length - 1))] ?? FLOOR_DB;
+  const noise = at(0.1);
+  const speech = at(0.9);
+  const threshold = Math.round(noise + (speech - noise) * THRESHOLD_POSITION);
+  return Math.min(THRESHOLD_RANGE[1], Math.max(THRESHOLD_RANGE[0], threshold));
 }
