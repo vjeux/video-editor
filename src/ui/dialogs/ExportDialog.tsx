@@ -176,17 +176,14 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
           <DialogField label="Resolution">
             <Select
               label="Resolution"
-              value={height}
+              value={String(height)}
               disabled={exporting}
+              options={heights.map((h) => ({
+                value: String(h),
+                label: `${width(h)} × ${h}${h === settings.height ? " (project)" : ""}`,
+              }))}
               onChange={(v) => setHeight(Number(v))}
-            >
-              {heights.map((h) => (
-                <option key={h} value={h}>
-                  {width(h)} × {h}
-                  {h === settings.height ? " (project)" : ""}
-                </option>
-              ))}
-            </Select>
+            />
           </DialogField>
           <DialogField label="Quality">
             <Segmented

@@ -21,20 +21,12 @@ export function TransitionPicker({
     <Select
       label="Transition"
       value={value ?? ""}
-      onChange={(id) => id && applyTransition(clipId, id, duration)}
-    >
-      <option value="" disabled>
-        {value ? "Missing transition" : "Choose a transition…"}
-      </option>
-      {categories.map((c) => (
-        <optgroup key={c.name} label={c.name}>
-          {c.effects.map((def) => (
-            <option key={def.id} value={def.id}>
-              {def.name}
-            </option>
-          ))}
-        </optgroup>
-      ))}
-    </Select>
+      placeholder={value ? "Missing transition" : "Choose a transition…"}
+      options={categories.map((c) => ({
+        group: c.name,
+        options: c.effects.map((def) => ({ value: def.id, label: def.name })),
+      }))}
+      onChange={(id) => applyTransition(clipId, id, duration)}
+    />
   );
 }

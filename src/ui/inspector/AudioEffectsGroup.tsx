@@ -37,21 +37,17 @@ export function AudioEffectsGroup({ clip }: { clip: MediaClip }) {
       <Select
         label="Add audio effect"
         value=""
-        onChange={(id) => id && applyAudioEffect(id, [clip.id])}
-      >
-        <option value="" disabled>
-          Add audio effect…
-        </option>
-        {AUDIO_EFFECT_GROUPS.map((group) => (
-          <optgroup key={group.category} label={group.category}>
-            {group.effects.map((effect) => (
-              <option key={effect.id} value={effect.id} title={effect.description}>
-                {effect.name}
-              </option>
-            ))}
-          </optgroup>
-        ))}
-      </Select>
+        placeholder="Add audio effect…"
+        options={AUDIO_EFFECT_GROUPS.map((group) => ({
+          group: group.category,
+          options: group.effects.map((effect) => ({
+            value: effect.id,
+            label: effect.name,
+            hint: effect.description,
+          })),
+        }))}
+        onChange={(id) => applyAudioEffect(id, [clip.id])}
+      />
     </Group>
   );
 }

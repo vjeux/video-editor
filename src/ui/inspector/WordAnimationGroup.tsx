@@ -40,18 +40,18 @@ export function WordAnimationGroup({ clip }: { clip: TextClip }) {
   return (
     <Group title="Word animation">
       <Row label="Preset" wide>
-        <Select label="Word animation" value={motion?.presetId ?? ""} onChange={pick}>
-          <option value="">None</option>
-          {TEXT_MOTION_GROUPS.map((group) => (
-            <optgroup key={group.label} label={group.label}>
-              {group.presets.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </Select>
+        <Select
+          label="Word animation"
+          value={motion?.presetId ?? ""}
+          options={[
+            { value: "", label: "None" },
+            ...TEXT_MOTION_GROUPS.map((group) => ({
+              group: group.label,
+              options: group.presets.map((p) => ({ value: p.id, label: p.name })),
+            })),
+          ]}
+          onChange={pick}
+        />
       </Row>
       {motion && (
         <>
@@ -86,17 +86,9 @@ export function WordAnimationGroup({ clip }: { clip: TextClip }) {
               <Select
                 label="Word animation easing"
                 value={motion.easing}
-                onChange={(v) => {
-                  const easing = EASINGS.find((e) => e === v);
-                  if (easing) set({ ...motion, easing });
-                }}
-              >
-                {EASINGS.map((e) => (
-                  <option key={e} value={e}>
-                    {EASING_LABELS[e]}
-                  </option>
-                ))}
-              </Select>
+                options={EASINGS.map((e) => ({ value: e, label: EASING_LABELS[e] }))}
+                onChange={(easing) => set({ ...motion, easing })}
+              />
             </Row>
           )}
         </>
