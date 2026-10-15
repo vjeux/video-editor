@@ -235,6 +235,23 @@ describe("migrateProject", () => {
     expect(migrateProject(damaged)).toEqual(current);
   });
 
+  it("never overwrites values the project already has", () => {
+    const base = twoClips();
+    const tuned = {
+      ...base,
+      clips: {
+        ...base.clips,
+        a: {
+          ...base.clips.a!,
+          speedRamp: "velocity",
+          audioEffects: [{ id: "x", effectId: "reverb", enabled: true, params: {} }],
+          animationLoop: { presetId: "pulse", duration: 1, easing: "linear" as const },
+        },
+      },
+    };
+    expect(migrateProject(JSON.parse(JSON.stringify(tuned)))).toEqual(tuned);
+  });
+
   it("rejects unknown data", () => {
     expect(() => migrateProject({ version: 99 })).toThrow(/version/);
   });
