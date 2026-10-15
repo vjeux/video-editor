@@ -14,7 +14,7 @@ import type {
 export const DEFAULT_TRANSFORM: Transform = { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 };
 
 export const DEFAULT_TEXT_STYLE: TextStyle = {
-  fontFamily: "Inter",
+  fontFamily: "Inter Variable",
   fontWeight: 700,
   fontSize: 96,
   letterSpacing: 0,
