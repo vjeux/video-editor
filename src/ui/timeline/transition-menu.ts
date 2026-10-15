@@ -23,6 +23,7 @@ export function transitionMenu(
     {
       kind: "item",
       label: "Remove transition",
+      icon: "trash",
       run: () => clearTransition(clipId),
       shortcut: "⌫",
       danger: true,

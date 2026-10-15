@@ -56,31 +56,48 @@ export function clipMenu(clipId: Id, time: number): MenuEntry[] {
   const inside = (t: number) => t > clip.start && t < clip.start + clip.duration;
   const visual = clip.type !== "media" || project.assets[clip.assetId]?.kind !== "audio";
   return [
-    item("Split here", () => splitClipAt(clipId, time), { disabled: locked || !inside(time) }),
+    item("Split here", () => splitClipAt(clipId, time), {
+      icon: "split",
+      disabled: locked || !inside(time),
+    }),
     item("Split at playhead", splitAtPlayhead, {
+      icon: "blade",
       shortcut: "S",
       disabled: locked || !inside(playhead),
     }),
     SEPARATOR,
-    item("Copy", copySelection, { shortcut: "⌘C" }),
-    item("Duplicate", duplicateSelection, { shortcut: "⌘D", disabled: locked }),
-    item("Move to playhead", () => moveClipToPlayhead(clipId), { disabled: locked }),
+    item("Copy", copySelection, { icon: "copy", shortcut: "⌘C" }),
+    item("Duplicate", duplicateSelection, { icon: "duplicate", shortcut: "⌘D", disabled: locked }),
+    item("Move to playhead", () => moveClipToPlayhead(clipId), {
+      icon: "toPlayhead",
+      disabled: locked,
+    }),
     ...(visual
       ? [
           SEPARATOR,
-          item("Fit to frame", () => fitClip(clipId, "fit"), { disabled: locked }),
+          item("Fit to frame", () => fitClip(clipId, "fit"), { icon: "fit", disabled: locked }),
           ...(clip.type === "media"
-            ? [item("Fill frame", () => fitClip(clipId, "fill"), { disabled: locked })]
+            ? [
+                item("Fill frame", () => fitClip(clipId, "fill"), {
+                  icon: "fullscreen",
+                  disabled: locked,
+                }),
+              ]
             : []),
-          item("Reset transform", () => resetTransform(clipId), { disabled: locked }),
+          item("Reset transform", () => resetTransform(clipId), {
+            icon: "reset",
+            disabled: locked,
+          }),
         ]
       : []),
     SEPARATOR,
     item("Crossfade from previous clip", () => applyTransition(clipId, "crossfade"), {
+      icon: "transition",
       disabled: locked || !previousAdjacent(project, clip) || !findEffect("crossfade"),
     }),
-    item("Add adjustment layer", () => addAdjustmentLayer()),
+    item("Add adjustment layer", () => addAdjustmentLayer(), { icon: "layers" }),
     item("Freeze frame at playhead", () => void freezeFrame().catch(reportError), {
+      icon: "freeze",
       shortcut: "F",
       disabled:
         locked ||
@@ -89,8 +106,14 @@ export function clipMenu(clipId: Id, time: number): MenuEntry[] {
         !inside(playhead),
     }),
     SEPARATOR,
-    item("Delete", () => deleteSelection(), { shortcut: "⌫", danger: true, disabled: locked }),
+    item("Delete", () => deleteSelection(), {
+      icon: "trash",
+      shortcut: "⌫",
+      danger: true,
+      disabled: locked,
+    }),
     item("Ripple delete", () => deleteSelection(true), {
+      icon: "ripple",
       shortcut: "⇧⌫",
       danger: true,
       disabled: locked,
@@ -106,18 +129,18 @@ export function laneMenu(trackId: Id | null, time: number): MenuEntry[] {
         seek(time);
         pasteAtPlayhead();
       },
-      { shortcut: "⌘V", disabled: !hasClipboard() },
+      { icon: "paste", shortcut: "⌘V", disabled: !hasClipboard() },
     ),
-    item("Add title here", () => addTextAt(time, trackId ?? undefined)),
-    item("Add marker here", () => addMarkerAt(time)),
-    item("Move playhead here", () => seek(time)),
+    item("Add title here", () => addTextAt(time, trackId ?? undefined), { icon: "text" }),
+    item("Add marker here", () => addMarkerAt(time), { icon: "marker", shortcut: "M" }),
+    item("Move playhead here", () => seek(time), { icon: "toPlayhead" }),
   ];
 }
 
-const TRACK_KINDS: { kind: TrackKind; label: string }[] = [
-  { kind: "video", label: "Add video track" },
-  { kind: "audio", label: "Add audio track" },
-  { kind: "text", label: "Add title track" },
+const TRACK_KINDS: { kind: TrackKind; label: string; icon: string }[] = [
+  { kind: "video", label: "Video", icon: "film" },
+  { kind: "audio", label: "Audio", icon: "music" },
+  { kind: "text", label: "Title", icon: "text" },
 ];
 
 export function trackMenu(trackId: Id): MenuEntry[] {
@@ -137,11 +160,17 @@ export function trackMenu(trackId: Id): MenuEntry[] {
   return [
     ...flags,
     SEPARATOR,
-    ...TRACK_KINDS.map(({ kind, label }) =>
-      item(label, () => commit((p) => addTrack(p, kind, newId()).project)),
-    ),
+    {
+      kind: "submenu",
+      label: "Add track",
+      icon: "plus",
+      entries: TRACK_KINDS.map(({ kind, label, icon }) =>
+        item(label, () => commit((p) => addTrack(p, kind, newId()).project), { icon }),
+      ),
+    },
     SEPARATOR,
     item("Delete track", () => commit((p) => removeTrack(p, trackId)), {
+      icon: "trash",
       danger: true,
       disabled: onlyOfKind,
     }),
@@ -150,9 +179,11 @@ export function trackMenu(trackId: Id): MenuEntry[] {
 
 export function assetMenu(assetId: Id): MenuEntry[] {
   return [
-    item("Append to timeline", () => addAssetToTimeline(assetId)),
-    item("Insert at playhead", () => addAssetToTimeline(assetId, { start: state().playhead })),
+    item("Append to timeline", () => addAssetToTimeline(assetId), { icon: "plus" }),
+    item("Insert at playhead", () => addAssetToTimeline(assetId, { start: state().playhead }), {
+      icon: "toPlayhead",
+    }),
     SEPARATOR,
-    item("Remove from project", () => deleteAsset(assetId), { danger: true }),
+    item("Remove from project", () => deleteAsset(assetId), { icon: "trash", danger: true }),
   ];
 }
