@@ -230,6 +230,11 @@ export function snapCandidates(
 export const sourceTimeAt = (clip: MediaClip, t: Seconds): Seconds =>
   clip.offset + (t - clip.start) * clip.speed;
 
-export const setClipSpeed = (_project: Project, _id: Id, _speed: number): Project => {
-  throw new Error("not implemented");
-};
+/** Retimes a media clip over the same source span, bounded by its neighbours and source. */
+export function setClipSpeed(project: Project, id: Id, speed: number): Project {
+  const clip = findClip(project, id);
+  if (clip.type !== "media" || speed <= 0) return project;
+  const desired = (clip.duration * clip.speed) / speed;
+  const retimed = { ...clip, speed, duration: 1 / project.settings.fps };
+  return trimClip(setClips(project, [], [retimed]), id, "end", clip.start + desired);
+}
