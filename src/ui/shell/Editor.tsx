@@ -38,7 +38,7 @@ const styles = stylex.create({
     display: "grid",
     gridTemplateColumns: {
       default: "260px minmax(0, 1fr) 290px",
-      "@media (max-width: 1100px)": "210px minmax(0, 1fr) 250px",
+      "@media (max-width: 1100px)": "236px minmax(0, 1fr) 250px",
     },
     gap: 1,
     overflow: "hidden",

@@ -1,11 +1,11 @@
 import * as stylex from "@stylexjs/stylex";
 import { useState, type ComponentType } from "react";
-import { Segmented } from "../controls/Segmented";
 import { MediaBin } from "../media/MediaBin";
 import { colors } from "../theme/tokens.stylex";
 import { AnimationBrowser } from "./AnimationBrowser";
 import { EffectBrowser } from "./EffectBrowser";
-import { LIBRARY_TABS, type LibraryTab } from "./tabs";
+import { LibraryTabs } from "./LibraryTabs";
+import type { LibraryTab } from "./tabs";
 import { TransitionBrowser } from "./TransitionBrowser";
 
 const VIEWS: Record<LibraryTab, ComponentType> = {
@@ -24,12 +24,7 @@ const styles = stylex.create({
     overflow: "hidden",
     backgroundColor: colors.panel,
   },
-  tabs: {
-    flexShrink: 0,
-    paddingTop: 8,
-    paddingInline: 12,
-    paddingBottom: 0,
-  },
+  tabs: { flexShrink: 0 },
   view: {
     flexGrow: 1,
     minHeight: 0,
@@ -46,7 +41,7 @@ export function LibraryPanel() {
   return (
     <section aria-label="Library" {...stylex.props(styles.panel)}>
       <div {...stylex.props(styles.tabs)}>
-        <Segmented label="Library" value={tab} options={LIBRARY_TABS} onChange={setTab} compact />
+        <LibraryTabs value={tab} onChange={setTab} />
       </div>
       <div {...stylex.props(styles.view)}>
         <View />
