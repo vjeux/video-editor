@@ -21,6 +21,7 @@ import {
   removeAsset,
   removeClips,
   snapCandidates,
+  setClipSpeed,
   snapTime,
   sourceTimeAt,
   splitAtTime,
@@ -357,5 +358,19 @@ describe("sourceTimeAt", () => {
     const clip = { ...videoClip("a", 10, 4, 3), speed: 2 } as MediaClip;
     expect(sourceTimeAt(clip, 10)).toBe(3);
     expect(sourceTimeAt(clip, 11.5)).toBe(6);
+  });
+});
+
+describe("setClipSpeed", () => {
+  it("keeps the same source span when the speed changes", () => {
+    const base = withClips(emptyProject(), videoClip("a", 0, 4, 2));
+    const project = setClipSpeed(base, "a", 2);
+    expect(mediaClip(project, "a")).toMatchObject({ speed: 2, duration: 2, offset: 2 });
+  });
+
+  it("stops at the next clip when slowing down", () => {
+    const base = withClips(emptyProject(), videoClip("a", 0, 4), videoClip("b", 6, 2));
+    const project = setClipSpeed(base, "a", 0.5);
+    expect(mediaClip(project, "a")).toMatchObject({ speed: 0.5, duration: 6 });
   });
 });

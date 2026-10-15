@@ -229,3 +229,7 @@ export function snapCandidates(
 
 export const sourceTimeAt = (clip: MediaClip, t: Seconds): Seconds =>
   clip.offset + (t - clip.start) * clip.speed;
+
+export const setClipSpeed = (_project: Project, _id: Id, _speed: number): Project => {
+  throw new Error("not implemented");
+};
