@@ -2,7 +2,7 @@ import type { Project } from "./types";
 
 type Raw = Record<string, unknown>;
 
-const CURRENT_VERSION = 2;
+const CURRENT_VERSION = 3;
 
 /** One step per version: each takes a project of version N and returns version N + 1. */
 const MIGRATIONS: Record<number, (project: Raw) => Raw> = {
@@ -15,6 +15,19 @@ const MIGRATIONS: Record<number, (project: Raw) => Raw> = {
         id,
         { ...clip, effects: [], transitionIn: null, animationIn: null, animationOut: null },
       ]),
+    ),
+  }),
+  2: (project) => ({
+    ...project,
+    version: 3,
+    clips: Object.fromEntries(
+      Object.entries(project.clips as Record<string, Raw>).map(([id, clip]) => {
+        const kindFields: Record<string, Raw> = {
+          media: { speedRamp: null, audioEffects: [] },
+          text: { style: { ...(clip.style as Raw), stroke: null } },
+        };
+        return [id, { ...clip, animationLoop: null, ...kindFields[clip.type as string] }];
+      }),
     ),
   }),
 };
