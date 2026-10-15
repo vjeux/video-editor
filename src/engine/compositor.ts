@@ -1,4 +1,4 @@
-import { clipOpacityAt, textAnimationState } from "../core/animation";
+import { clipOpacityAt } from "../core/animation";
 import { animationStateAt, type MotionDelta } from "../core/clip-animations";
 import { defaultParams } from "../core/effects";
 import { layersAt, type Layer } from "../core/layers";
@@ -6,58 +6,15 @@ import { containSize } from "../core/layout";
 import { clipEnd, frameSourceTime } from "../core/timeline";
 import type { Clip, EffectDefinition, MediaClip, Project, TextClip } from "../core/types";
 import type { GpuEffects, GpuPass } from "./gpu";
+import { drawText, layoutText } from "./text-renderer";
+
+export { fontFor, layoutText, type TextLayout } from "./text-renderer";
 
 export type Ctx2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 export type Drawable = HTMLCanvasElement | OffscreenCanvas | ImageBitmap;
 
 /** Resolves the decoded picture for a media clip at a source time. */
 export type FrameSource = (clip: MediaClip, sourceTime: number) => Drawable | null;
-
-const LINE_HEIGHT = 1.15;
-const BOX_PADDING = 0.35;
-
-export interface TextLayout {
-  lines: string[];
-  lineHeight: number;
-  width: number;
-  height: number;
-  padding: number;
-}
-
-export const fontFor = (clip: TextClip) =>
-  `${clip.style.fontWeight} ${clip.style.fontSize}px "${clip.style.fontFamily}", system-ui, sans-serif`;
-
-function applyTextStyle(ctx: Ctx2D, clip: TextClip) {
-  ctx.font = fontFor(clip);
-  ctx.letterSpacing = `${clip.style.letterSpacing}px`;
-  ctx.textBaseline = "middle";
-}
-
-export function layoutText(ctx: Ctx2D, clip: TextClip): TextLayout {
-  ctx.save();
-  applyTextStyle(ctx, clip);
-  const lines = clip.text.split("\n");
-  const lineHeight = clip.style.fontSize * LINE_HEIGHT;
-  // Ink bounds can overhang the advance width (italics, heavy weights).
-  const textWidth = Math.max(
-    1,
-    ...lines.map((line) => {
-      const m = ctx.measureText(line);
-      return Math.max(m.width, m.actualBoundingBoxLeft + m.actualBoundingBoxRight);
-    }),
-  );
-  ctx.restore();
-  // The outline extends past the glyphs; inset the text so box and bounds include it.
-  const stroke = clip.style.stroke?.width ?? 0;
-  const padding = (clip.style.background ? clip.style.fontSize * BOX_PADDING : 0) + stroke;
-  return {
-    lines,
-    lineHeight,
-    width: textWidth + padding * 2,
-    height: lines.length * lineHeight + padding * 2,
-    padding,
-  };
-}
 
 /** Unscaled, unrotated size of a layer in project pixels. */
 export function layerSize(
@@ -83,58 +40,6 @@ function drawMedia(ctx: Ctx2D, project: Project, clip: MediaClip, t: number, fra
     project.settings.height,
   );
   ctx.drawImage(frame, -width / 2, -height / 2, width, height);
-}
-
-function drawText(ctx: Ctx2D, clip: TextClip, t: number) {
-  const layout = layoutText(ctx, clip);
-  const anim = textAnimationState(clip, t);
-  const { style } = clip;
-
-  ctx.globalAlpha *= anim.opacity;
-  if (anim.blur > 0) ctx.filter = `blur(${anim.blur}px)`;
-  ctx.translate(0, anim.offsetY);
-
-  if (style.background) {
-    ctx.fillStyle = style.background;
-    ctx.beginPath();
-    ctx.roundRect(
-      -layout.width / 2,
-      -layout.height / 2,
-      layout.width,
-      layout.height,
-      style.fontSize * 0.18,
-    );
-    ctx.fill();
-  }
-
-  applyTextStyle(ctx, clip);
-  ctx.textAlign = style.align;
-  ctx.fillStyle = style.color;
-  ctx.shadowColor = "rgba(0, 0, 0, 0.35)";
-  ctx.shadowBlur = style.fontSize * 0.2;
-  ctx.shadowOffsetY = style.fontSize * 0.02;
-
-  const inner = layout.width / 2 - layout.padding;
-  const x = { left: -inner, center: 0, right: inner }[style.align];
-  let remaining = anim.visibleChars;
-  layout.lines.forEach((line, i) => {
-    const shown = line.slice(0, Math.max(0, remaining));
-    remaining -= line.length + 1;
-    const y = -layout.height / 2 + layout.padding + layout.lineHeight * (i + 0.5);
-    if (!shown) return;
-    if (style.stroke) {
-      // Stroke first at twice the width so the fill covers its inner half.
-      ctx.save();
-      ctx.shadowColor = "transparent";
-      ctx.lineJoin = "round";
-      ctx.miterLimit = 2;
-      ctx.lineWidth = style.stroke.width * 2;
-      ctx.strokeStyle = style.stroke.color;
-      ctx.strokeText(shown, x, y);
-      ctx.restore();
-    }
-    ctx.fillText(shown, x, y);
-  });
 }
 
 /** Everything the compositor needs besides the project: decoded frames, the GPU and effect lookup. */
