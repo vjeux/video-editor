@@ -27,6 +27,7 @@ const styles = stylex.create({
     boxShadow: shadows.dialog,
   },
   wide: { width: "min(720px, calc(100vw - 32px))" },
+  studio: { width: "min(1200px, calc(100vw - 32px))", height: "min(820px, calc(100vh - 32px))" },
   header: {
     flexShrink: 0,
     display: "flex",
@@ -69,6 +70,7 @@ export function Dialog({
   footer,
   note,
   wide,
+  size,
   dismissable = true,
 }: {
   title: string;
@@ -78,6 +80,8 @@ export function Dialog({
   /** Muted text at the start of the footer. */
   note?: ReactNode;
   wide?: boolean;
+  /** Workspace-sized modal (Effect Studio). */
+  size?: "studio";
   dismissable?: boolean;
 }) {
   const titleId = useId();
@@ -99,7 +103,7 @@ export function Dialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        {...stylex.props(styles.dialog, wide && styles.wide)}
+        {...stylex.props(styles.dialog, wide && styles.wide, size === "studio" && styles.studio)}
       >
         <header {...stylex.props(styles.header)}>
           <h2 id={titleId} {...stylex.props(styles.title)}>
