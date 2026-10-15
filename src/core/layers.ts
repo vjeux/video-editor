@@ -16,7 +16,7 @@ export function transitionWindow(project: Project, clip: Clip) {
   return { from, to: clip, transition, start: clip.start - duration / 2, duration };
 }
 
-function trackLayersAt(project: Project, clips: Clip[], t: Seconds): Layer[] {
+function trackLayersAt(project: Project, clips: readonly Clip[], t: Seconds): Layer[] {
   for (const clip of clips) {
     const window = transitionWindow(project, clip);
     if (window && t >= window.start && t < window.start + window.duration) {
