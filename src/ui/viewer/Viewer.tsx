@@ -109,8 +109,12 @@ export function Viewer() {
     const dpr = window.devicePixelRatio || 1;
     // Render at the display's device pixels (not the project width) so text and
     // vector shapes stay crisp on HiDPI screens; capped at 4K for memory.
-    c.width = Math.round(Math.min(MAX_PREVIEW_WIDTH, rect.width * dpr));
-    c.height = Math.round(c.width * (settings.height / settings.width));
+    const width = Math.round(Math.min(MAX_PREVIEW_WIDTH, rect.width * dpr));
+    const height = Math.round(width * (settings.height / settings.width));
+    // Assigning a canvas dimension clears it even when the value is unchanged,
+    // and the render loop only redraws on real size changes: touch only on change.
+    if (c.width !== width) c.width = width;
+    if (c.height !== height) c.height = height;
   }, [rect.width, settings.width, settings.height]);
 
   useEffect(() => {
