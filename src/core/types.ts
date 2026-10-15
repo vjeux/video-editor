@@ -14,6 +14,8 @@ export interface Asset {
   width: number;
   height: number;
   hasAudio: boolean;
+  /** Frames per second the video was recorded at, when known (not for stills or audio). */
+  frameRate?: number;
 }
 
 export type TrackKind = "video" | "audio" | "text";
