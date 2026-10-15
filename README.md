@@ -172,6 +172,19 @@ Add `?perf` to the URL for a live playback overlay on the monitor: composites
 per second, render time, video lag behind the playhead, seeks and dropped
 frames.
 
+`bench/long-media.mjs` measures long and large media in headless Chromium
+(Playwright drives the dev server's own modules). It generates hour-long
+low-resolution videos and a 1.5 GB high-bitrate one in the page (cached in a
+throwaway profile under `node_modules/.cache`), then records peak JS heap,
+peak renderer memory and whether the tab survived for import, playback start,
+export (with the frame and audio counts read back from the file) and
+`.cutline` save/open:
+
+```bash
+vp dev --port 5199
+node bench/long-media.mjs --minutes 10,30,60 --large --out bench/results/run.json
+```
+
 ## Keyboard shortcuts
 
 | Action                      | Keys                  |
