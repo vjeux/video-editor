@@ -98,9 +98,7 @@ export function moveClip(
   to: { start: Seconds; trackId: Id },
   newId: IdFactory,
 ): Project {
-  const clip = findClip(project, id);
-  const lifted = setClips(project, [id], []);
-  return placeClip(lifted, { ...clip, start: Math.max(0, to.start), trackId: to.trackId }, newId);
+  return moveClips(project, [{ id, ...to }], newId);
 }
 
 export function maxClipDuration(project: Project, clip: Clip): Seconds {
@@ -239,10 +237,21 @@ export function setClipSpeed(project: Project, id: Id, speed: number): Project {
   return trimClip(setClips(project, [], [retimed]), id, "end", clip.start + desired);
 }
 
-export const moveClips = (
-  _project: Project,
-  _moves: readonly { id: Id; start: Seconds; trackId: Id }[],
-  _newId: IdFactory,
-): Project => {
-  throw new Error("not implemented");
-};
+/** Lifts every moved clip first, then places each, so a group never overwrites itself. */
+export function moveClips(
+  project: Project,
+  moves: readonly { id: Id; start: Seconds; trackId: Id }[],
+  newId: IdFactory,
+): Project {
+  const lifted = moves.map(({ id, start, trackId }) => ({
+    ...findClip(project, id),
+    start: Math.max(0, start),
+    trackId,
+  }));
+  const base = setClips(
+    project,
+    moves.map((m) => m.id),
+    [],
+  );
+  return lifted.reduce((acc, clip) => placeClip(acc, clip, newId), base);
+}
