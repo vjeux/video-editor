@@ -95,6 +95,18 @@ export const ICONS = {
     </>,
   ),
   close: stroke(<path d="M6 6l12 12M18 6L6 18" />),
+  panelLeft: stroke(
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M9 4v16" />
+    </>,
+  ),
+  panelRight: stroke(
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M15 4v16" />
+    </>,
+  ),
   check: stroke(<path d="M5 12l5 5 9-10" />),
   plus: stroke(<path d="M12 5v14M5 12h14" />),
   film: stroke(

@@ -9,8 +9,8 @@ const TITLE = "Import markers from chapters, CSV, SRT/VTT or LiveSplit (.lss)";
 
 const styles = stylex.create({
   button: {
-    width: 30,
-    height: 30,
+    width: { default: 30, "@media (max-width: 599px)": 24 },
+    height: { default: 30, "@media (max-width: 599px)": 24 },
     flexShrink: 0,
     borderRadius: radii.md,
     display: "grid",

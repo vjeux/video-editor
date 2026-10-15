@@ -10,6 +10,7 @@ const styles = stylex.create({
     fontWeight: 650,
     letterSpacing: "0.2px",
   },
+  word: { display: { default: "inline", "@media (max-width: 599px)": "none" } },
   logo: {
     width: 22,
     height: 22,
@@ -28,7 +29,7 @@ export function Brand() {
           <path d="M7 4l13 8-13 8z" />
         </svg>
       </div>
-      Cutline
+      <span {...stylex.props(styles.word)}>Cutline</span>
     </div>
   );
 }

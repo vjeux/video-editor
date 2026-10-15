@@ -14,9 +14,9 @@ const styles = stylex.create({
     minWidth: 0,
     display: "flex",
     alignItems: "center",
-    gap: 16,
+    gap: { default: 16, "@media (max-width: 599px)": 8 },
     paddingBlock: 0,
-    paddingInline: 14,
+    paddingInline: { default: 14, "@media (max-width: 599px)": 8 },
     overflow: "hidden",
     backgroundColor: colors.bg,
   },
@@ -46,15 +46,34 @@ const styles = stylex.create({
     userSelect: "text",
   },
   grow: { flexGrow: 1 },
+  /** Button text gives way to icons on phones. */
+  label: { display: { default: "inline", "@media (max-width: 599px)": "none" } },
+  saved: { display: { default: "contents", "@media (max-width: 599px)": "none" } },
+  folder: { display: { default: "block", "@media (max-width: 599px)": "none" } },
   actions: {
     flexShrink: 0,
     display: "flex",
     alignItems: "center",
-    gap: 6,
+    gap: { default: 6, "@media (max-width: 599px)": 2 },
   },
 });
 
-export function TopBar({ onExport, onScript }: { onExport: () => void; onScript: () => void }) {
+interface PanelToggles {
+  library: boolean;
+  inspector: boolean;
+  toggle: (panel: "library" | "inspector") => void;
+}
+
+export function TopBar({
+  onExport,
+  onScript,
+  panels,
+}: {
+  onExport: () => void;
+  onScript: () => void;
+  /** Present on narrow screens, where the side panels are slide-overs. */
+  panels?: PanelToggles;
+}) {
   const name = useEditor((s) => s.project.name);
   const canUndo = useEditor((s) => s.past.length > 0);
   const canRedo = useEditor((s) => s.future.length > 0);
@@ -65,9 +84,19 @@ export function TopBar({ onExport, onScript }: { onExport: () => void; onScript:
 
   return (
     <header {...stylex.props(styles.bar)}>
+      {panels && (
+        <IconButton
+          icon="panelLeft"
+          title="Library"
+          on={panels.library}
+          onClick={() => panels.toggle("library")}
+        />
+      )}
       <Brand />
       <div {...stylex.props(styles.project)}>
-        <Icon name="folder" size={14} />
+        <span {...stylex.props(styles.folder)}>
+          <Icon name="folder" size={14} />
+        </span>
         <input
           aria-label="Project name"
           value={name}
@@ -77,7 +106,9 @@ export function TopBar({ onExport, onScript }: { onExport: () => void; onScript:
           onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
           {...stylex.props(styles.name)}
         />
-        <SavedStatus />
+        <span {...stylex.props(styles.saved)}>
+          <SavedStatus />
+        </span>
       </div>
       <div {...stylex.props(styles.grow)} />
       <div {...stylex.props(styles.actions)}>
@@ -85,12 +116,20 @@ export function TopBar({ onExport, onScript }: { onExport: () => void; onScript:
         <IconButton icon="redo" title="Redo (⇧⌘Z)" onClick={redo} disabled={!canRedo} />
         <Button onClick={onScript} title="Edit the timeline with code">
           <Icon name="code" size={14} />
-          Script
+          <span {...stylex.props(styles.label)}>Script</span>
         </Button>
-        <Button variant="primary" onClick={onExport} disabled={!hasContent}>
+        <Button variant="primary" onClick={onExport} disabled={!hasContent} title="Export video">
           <Icon name="export" size={14} strokeWidth={2.2} />
-          Export
+          <span {...stylex.props(styles.label)}>Export</span>
         </Button>
+        {panels && (
+          <IconButton
+            icon="panelRight"
+            title="Inspector"
+            on={panels.inspector}
+            onClick={() => panels.toggle("inspector")}
+          />
+        )}
       </div>
     </header>
   );
