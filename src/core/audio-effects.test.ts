@@ -101,6 +101,7 @@ describe("audioTail", () => {
   it("is how long a stack keeps sounding after its input stops", () => {
     expect(audioTail([])).toBe(0);
     expect(audioTail([instance("eq")])).toBe(0);
+    expect(audioTail([instance("pitch")])).toBeCloseTo(0.1);
     expect(audioTail([instance("reverb", { decay: 4, preDelay: 0.2 })])).toBeCloseTo(4.2);
   });
 
