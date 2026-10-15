@@ -96,14 +96,18 @@ class ExportFrames {
     }
   }
 
-  /** Advances every clip visible at `t` by one frame. */
+  /** Advances every clip visible at `t` by one frame, decoding overlapping clips together. */
   async advance(t: number) {
-    for (const clip of layersAt(this.project, t).flatMap(layerClips)) {
-      const iterator = this.iterators.get(clip.id);
-      if (!iterator) continue;
-      const result = await iterator.next();
-      if (!result.done && result.value) this.current.set(clip.id, result.value.canvas);
-    }
+    await Promise.all(
+      layersAt(this.project, t)
+        .flatMap(layerClips)
+        .map(async (clip) => {
+          const iterator = this.iterators.get(clip.id);
+          if (!iterator) return;
+          const result = await iterator.next();
+          if (!result.done && result.value) this.current.set(clip.id, result.value.canvas);
+        }),
+    );
   }
 
   lookup = (clip: MediaClip): Drawable | null =>
@@ -174,12 +178,14 @@ export async function exportProject(
   const videoCodec = await getFirstEncodableVideoCodec(format.getSupportedVideoCodecs(), {
     width,
     height,
+    frameRate: fps,
   });
   if (!videoCodec)
     throw new Error(`This browser cannot encode video for ${opts.format.toUpperCase()}`);
   const video = new CanvasSource(canvas, {
     codec: videoCodec,
-    bitrate: QUALITIES[opts.quality],
+    quality: QUALITIES[opts.quality],
+    hardwareAcceleration: "prefer-hardware",
     onEncoderConfig: (config) => (stats.codec = config.codec),
   });
   output.addVideoTrack(video, { frameRate: fps });
@@ -201,8 +207,10 @@ export async function exportProject(
     return result;
   };
 
-  const mix = await timed("mixdown", mixdown(project, media, duration));
-  const audioCodec = mix
+  // Audio renders off the main thread while video starts; it is first needed
+  // at the first audio chunk.
+  const mixing = audibleClips(project).length > 0 ? mixdown(project, media, duration) : null;
+  const audioCodec = mixing
     ? await getFirstEncodableAudioCodec(format.getSupportedAudioCodecs(), {
         numberOfChannels: CHANNELS,
         sampleRate: SAMPLE_RATE,
@@ -227,6 +235,8 @@ export async function exportProject(
     scratch: new ScratchCanvases(),
   };
   let audioWritten = 0;
+  let mix: AudioBuffer | null = null;
+  let encoding: Promise<void> | null = null;
 
   try {
     for (const [i, t] of frameTimes.entries()) {
@@ -237,15 +247,21 @@ export async function exportProject(
       stats.render += (performance.now() - renderFrom) / 1000;
       // A shader that fails to compile would otherwise export silently unfiltered.
       if (gpuErrors[0]) throw gpuErrors[0];
-      await timed("encode", video.add(t, 1 / fps));
+      // add() snapshots the canvas immediately, so frame t+1 decodes and renders
+      // while frame t encodes; only one add is ever outstanding.
+      if (encoding) await timed("encode", encoding);
+      encoding = video.add(t, 1 / fps);
 
-      while (audio && mix && audioWritten <= t && audioWritten < duration) {
+      while (audio && mixing && audioWritten <= t && audioWritten < duration) {
+        mix ??= await timed("mixdown", mixing);
+        if (!mix) break;
         const chunk = sliceAudio(mix, audioWritten, Math.min(duration, audioWritten + AUDIO_CHUNK));
         if (chunk) await audio.add(chunk);
         audioWritten += AUDIO_CHUNK;
       }
       opts.onProgress((i + 1) / frameCount);
     }
+    if (encoding) await timed("encode", encoding);
     await output.finalize();
     perf.lastExport = {
       ...stats,
