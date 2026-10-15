@@ -163,6 +163,25 @@ describe("FrameQueue", () => {
   });
 });
 
+describe("FrameQueue render requests", () => {
+  it("asks for a render when a seek lands or a due frame arrives, not for lookahead", async () => {
+    const decoder = fakeDecoder();
+    let renders = 0;
+    const queue = new FrameQueue<Frame>({
+      open: decoder.source,
+      release: decoder.release,
+      onFrame: () => renders++,
+      keyframeAtOrBefore: () => null,
+    });
+    queue.frameAt(0);
+    await settle();
+    expect(renders).toBe(1);
+    queue.frameAt(0.4);
+    await settle();
+    expect(renders).toBeGreaterThan(1);
+  });
+});
+
 describe("keyframeAtOrBefore", () => {
   it("finds the last keyframe at or before a time", () => {
     const keyframes = [0, 2, 4.5, 9];
