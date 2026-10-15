@@ -31,6 +31,31 @@ export default defineConfig({
       { name: "stylex", specifier: "@stylexjs/eslint-plugin" },
     ],
   },
+  build: {
+    rolldownOptions: {
+      output: {
+        // Shared chunks are named after their first module ("Button"); name the
+        // one carrying Mediabunny's decoding core after what it actually is.
+        chunkFileNames: (chunk) =>
+          !chunk.isDynamicEntry &&
+          chunk.moduleIds.some((id) => id.includes("node_modules/mediabunny"))
+            ? "assets/media-[hash].js"
+            : "assets/[name]-[hash].js",
+        // Stable vendor chunks that app changes don't invalidate. Mediabunny is
+        // deliberately not grouped: left alone, its encoding/muxing half lands
+        // in the lazily loaded export dialog instead of the startup bundle.
+        codeSplitting: {
+          groups: [
+            { name: "react", test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/ },
+            {
+              name: "codemirror",
+              test: /node_modules[\\/](@codemirror|@lezer|crelt|style-mod|w3c-keyname)[\\/]/,
+            },
+          ],
+        },
+      },
+    },
+  },
   test: {
     include: ["src/**/*.test.ts"],
   },
