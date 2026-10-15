@@ -9,8 +9,10 @@ import {
 } from "react";
 import { addAssetToTimeline, importFiles } from "../../app/assets";
 import { MAX_PX_PER_SECOND, MIN_PX_PER_SECOND } from "../../app/commands";
+import { applyEffect, applyTransition } from "../../app/effects";
 import { newId } from "../../app/engine";
 import { pause, seek } from "../../app/playback";
+import type { Cut } from "../../core/effects";
 import { timeToX, xToTime } from "../../core/layout";
 import { snapToFrame } from "../../core/time";
 import {
@@ -24,9 +26,11 @@ import {
 } from "../../core/timeline";
 import type { Clip, Id, Project } from "../../core/types";
 import { editorStore, useEditor } from "../../store";
+import { EFFECT_MIME } from "../effect-dnd";
 import { ASSET_MIME } from "../media/dnd";
 import { colors } from "../theme/tokens.stylex";
 import type { ClipEdge } from "./ClipView";
+import { CUT_REACH_PX, cutTarget, effectDragKind, effectTargets } from "./effect-drop";
 import { Lane } from "./Lane";
 import { RULER_HEIGHT, type Viewport } from "./lanes";
 import { Playhead } from "./Playhead";
@@ -41,7 +45,9 @@ const TAIL_SECONDS = 30;
 type Drag =
   | { kind: "move"; preview: Project; snapAt: number | null; valid: boolean; ids: Id[] }
   | { kind: "trim"; preview: Project; snapAt: number | null; ids: Id[] }
-  | { kind: "drop"; trackId: Id | null; valid: boolean; time: number };
+  | { kind: "drop"; trackId: Id | null; valid: boolean; time: number }
+  | { kind: "effect"; trackId: Id | null; ids: Id[] }
+  | { kind: "transition"; trackId: Id | null; cut: Cut | null };
 
 const state = () => editorStore.getState();
 
@@ -168,7 +174,8 @@ export function Timeline() {
     };
   }, []);
 
-  const shown = drag && drag.kind !== "drop" ? drag.preview : project;
+  const preview = drag?.kind === "move" || drag?.kind === "trim" ? drag : null;
+  const shown = preview?.preview ?? project;
   const duration = projectDuration(shown);
   const innerWidth = Math.max(view.width, timeToX(duration + TAIL_SECONDS, pps));
 
@@ -294,20 +301,58 @@ export function Timeline() {
     return { target, time: snapToFrame(t, project.settings.fps) };
   };
 
+  const libraryDragOver = (e: DragEvent, kind: "effect" | "transition") => {
+    const point = localPoint(e);
+    const track = trackAtY(project, point.y);
+    const time = xToTime(point.x, pps);
+    const next: Drag =
+      kind === "effect"
+        ? {
+            kind,
+            trackId: track?.id ?? null,
+            ids: effectTargets(project, track, time, state().selection),
+          }
+        : {
+            kind,
+            trackId: track?.id ?? null,
+            cut: cutTarget(project, track, time, CUT_REACH_PX / pps),
+          };
+    const valid = next.kind === "effect" ? next.ids.length > 0 : next.cut !== null;
+    e.dataTransfer.dropEffect = valid ? "copy" : "none";
+    setDrag(next);
+  };
+
   const onDragOver = (e: DragEvent) => {
-    const isAsset = e.dataTransfer.types.includes(ASSET_MIME);
-    const isFiles = e.dataTransfer.types.includes("Files");
-    if (!isAsset && !isFiles) return;
+    const types = e.dataTransfer.types;
+    const library = effectDragKind(types);
+    const isAsset = types.includes(ASSET_MIME);
+    const isFiles = types.includes("Files");
+    if (!library && !isAsset && !isFiles) return;
     e.preventDefault();
     e.stopPropagation();
+    if (library) {
+      libraryDragOver(e, library);
+      return;
+    }
     const { target, time } = dropTarget(e);
     setDrag({ kind: "drop", trackId: target?.id ?? null, valid: !target?.locked, time });
+  };
+
+  // Library drops land exactly on what the dragover indicated (WYSIWYG).
+  const dropLibrary = (effectId: string) => {
+    if (drag?.kind === "effect" && drag.ids.length) applyEffect(effectId, drag.ids);
+    if (drag?.kind === "transition" && drag.cut) applyTransition(drag.cut.toId, effectId);
   };
 
   const onDrop = (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDrag(null);
+    const effectId = e.dataTransfer.getData(EFFECT_MIME);
+    if (effectId) {
+      dropLibrary(effectId);
+      return;
+    }
     const { target, time } = dropTarget(e);
     if (target?.locked) return;
     const assetId = e.dataTransfer.getData(ASSET_MIME);
@@ -316,11 +361,18 @@ export function Timeline() {
       void importFiles([...e.dataTransfer.files], { trackId: target?.id, start: time });
   };
 
-  const dragIds = drag && drag.kind !== "drop" ? drag.ids : [];
-  const snapAt = drag && drag.kind !== "drop" ? drag.snapAt : null;
+  const dragIds = preview?.ids ?? [];
+  const snapAt = preview?.snapAt ?? null;
   const invalidMove = drag?.kind === "move" && !drag.valid;
-  const dropOn = (trackId: Id) =>
-    drag?.kind === "drop" && drag.trackId === trackId ? (drag.valid ? "ok" : "bad") : null;
+  const dropOn = (trackId: Id) => {
+    if (drag?.kind === "drop" && drag.trackId === trackId) return drag.valid ? "ok" : "bad";
+    if (drag?.kind === "effect" && drag.trackId === trackId && !drag.ids.length) return "bad";
+    if (drag?.kind === "transition" && drag.trackId === trackId && !drag.cut) return "bad";
+    return null;
+  };
+  const effectDropIds = drag?.kind === "effect" ? drag.ids : [];
+  const cutAt = (trackId: Id) =>
+    drag?.kind === "transition" && drag.trackId === trackId ? (drag.cut?.time ?? null) : null;
 
   return (
     <section aria-label="Timeline" {...stylex.props(styles.root)}>
@@ -361,6 +413,8 @@ export function Timeline() {
                 dragIds={dragIds}
                 invalid={invalidMove}
                 drop={dropOn(t.id)}
+                effectTargets={effectDropIds}
+                cutAt={cutAt(t.id)}
                 view={view}
                 onPointerDown={onLanePointerDown}
                 onClipPointerDown={onClipPointerDown}
