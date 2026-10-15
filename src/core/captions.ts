@@ -62,6 +62,7 @@ const MIN_WORD: Seconds = 0.12;
 /** Captions sit in the lower third, as a fraction of the frame height below centre. */
 const LOWER_THIRD = 0.28;
 const SENTENCE_END = /[.!?…]["')\]]*$/;
+const CLAUSE_END = /[,;:]["')\]]*$/;
 /** Whisper's non-speech annotations: [BLANK_AUDIO], (music), *laughs*… */
 const NON_SPEECH = /^[[(*♪].*[\])*♪]$/;
 const EDGE_PUNCTUATION = /^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu;
@@ -123,18 +124,20 @@ export function transcriptionWindows(
 export function mergeWindows(
   results: readonly { window: TranscriptionWindow; words: readonly TimedWord[] }[],
 ): TimedWord[] {
-  return results.flatMap(({ window, words }) =>
-    words
+  return results.flatMap(({ window, words }) => {
+    // Models can time a word past the end of their audio; keep it, clamped.
+    const length = window.end - window.start;
+    return words
       .map((w) => ({
         text: w.text,
-        start: clean(w.start + window.start),
-        end: clean(w.end + window.start),
+        start: clean(Math.min(w.start, length) + window.start),
+        end: clean(Math.min(w.end, length) + window.start),
       }))
       .filter((w) => {
         const mid = (w.start + w.end) / 2;
-        return mid >= window.keepFrom && mid < window.keepTo;
-      }),
-  );
+        return mid >= window.keepFrom && (mid < window.keepTo || window.keepTo === window.end);
+      });
+  });
 }
 
 const display = (text: string, options: CaptionOptions) => {
@@ -144,7 +147,7 @@ const display = (text: string, options: CaptionOptions) => {
 
 /**
  * Groups words into on-screen captions: a new one starts after a sentence
- * ends, after a pause longer than `maxGap`, or before the word or character
+ * ends (or a clause, once half full), after a pause longer than `maxGap`, or before the word or character
  * limit would be passed. A caption runs into the next one across short
  * gaps, and otherwise holds briefly after its last word.
  */
@@ -160,6 +163,7 @@ export function chunkCaptions(
       !current ||
       !previous ||
       SENTENCE_END.test(previous.text) ||
+      (CLAUSE_END.test(previous.text) && current.length >= Math.ceil(options.maxWords / 2)) ||
       word.start - previous.end > options.maxGap ||
       current.length >= options.maxWords ||
       chars > options.maxChars;

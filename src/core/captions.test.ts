@@ -161,7 +161,12 @@ describe("chunkCaptions", () => {
 
   it("can upper-case and strip punctuation, keeping inner apostrophes", () => {
     const said = [w("Don't", 0, 0.2), w("stop,", 0.2, 0.4), w("ok?", 0.4, 0.6)];
-    const [caption] = chunkCaptions(said, { ...OPTIONS, uppercase: true, stripPunctuation: true });
+    const [caption] = chunkCaptions(said, {
+      ...OPTIONS,
+      maxWords: 5,
+      uppercase: true,
+      stripPunctuation: true,
+    });
     expect(caption?.text).toBe("DON'T STOP OK");
     expect(caption?.words.map((x) => x.text)).toEqual(["DON'T", "STOP", "OK"]);
   });
