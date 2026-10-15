@@ -34,7 +34,9 @@
     "idb-keyval": "^6.3.0",
     "mediabunny": "^1.61.4",
     "react": "^19.2.8",
+    "react-aria-components": "^1.22.1",
     "react-dom": "^19.2.8",
+    "sonner": "^2.0.8",
     "zustand": "^5.0.15"
   },
   "devDependencies": {

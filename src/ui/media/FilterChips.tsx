@@ -15,7 +15,7 @@ const styles = stylex.create({
   chip: {
     paddingBlock: 3,
     paddingInline: 9,
-    borderRadius: radii.pill,
+    borderRadius: radii.sm,
     borderWidth: 1,
     borderStyle: "solid",
     borderColor: colors.line2,
@@ -26,8 +26,8 @@ const styles = stylex.create({
   },
   on: {
     borderColor: "transparent",
-    backgroundColor: colors.text,
-    color: { default: colors.bg, ":hover": colors.bg },
+    backgroundColor: colors.accentSoft,
+    color: { default: colors.accent2, ":hover": colors.accent2 },
   },
 });
 

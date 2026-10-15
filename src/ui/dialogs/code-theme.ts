@@ -2,23 +2,24 @@ import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import type { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { tags as t } from "@lezer/highlight";
+import { colors } from "../theme/tokens.stylex";
 
 // CodeMirror styles its own DOM through this CSS-in-JS API; values mirror the app tokens.
 const palette = {
-  bg: "#0e0f12",
-  gutter: "#16181d",
-  activeLine: "#16181d",
-  line: "#262a33",
-  text: "#e6e8ee",
-  faint: "#5b6170",
-  muted: "#8b91a1",
-  accent: "#7c6cff",
-  selection: "rgba(124, 108, 255, 0.28)",
-  keyword: "#c06cf2",
-  string: "#5fe0b7",
-  number: "#e3a63b",
-  member: "#a99dff",
-  panel: "#1c1f26",
+  bg: colors.bg,
+  gutter: colors.panel2,
+  activeLine: colors.highlight,
+  line: colors.line,
+  text: colors.text,
+  faint: colors.faint,
+  muted: colors.muted,
+  accent: colors.accent,
+  selection: colors.accentRing,
+  keyword: colors.title,
+  string: colors.audio,
+  number: colors.music,
+  member: colors.accent2,
+  panel: colors.panel,
 };
 
 const theme = EditorView.theme(

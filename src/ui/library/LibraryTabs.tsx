@@ -8,62 +8,42 @@ const styles = stylex.create({
     display: "flex",
     alignItems: "stretch",
     gap: 2,
-    height: 36,
-    paddingInline: { default: 6, "@media (max-width: 1100px)": 4 },
+    height: 44,
+    padding: 6,
     borderBottomWidth: 1,
     borderBottomStyle: "solid",
     borderBottomColor: colors.line,
+    backgroundColor: colors.bg,
   },
   tab: {
-    position: "relative",
     flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: "auto",
     minWidth: 0,
     paddingBlock: 0,
-    paddingInline: { default: 6, "@media (max-width: 1100px)": 3 },
+    paddingInline: { default: 6, "@media (max-width: 1199px)": 3 },
     borderWidth: 0,
-    backgroundColor: "transparent",
+    borderRadius: 6,
+    backgroundColor: { default: "transparent", ":hover": colors.panel2 },
     color: { default: colors.muted, ":hover": colors.text },
-    fontSize: { default: 12, "@media (max-width: 1100px)": 11 },
+    fontSize: { default: 11.5, "@media (max-width: 1199px)": 10.5 },
     fontWeight: 500,
     whiteSpace: "nowrap",
     cursor: "pointer",
-    outline: "none",
-    boxShadow: { default: "none", ":focus-visible": `inset 0 0 0 1.5px ${colors.accent2}` },
-    borderRadius: 6,
-    "::after": {
-      content: '""',
-      position: "absolute",
-      left: 6,
-      right: 6,
-      bottom: -1,
-      height: 2,
-      borderRadius: 2,
-      backgroundColor: "transparent",
-    },
   },
   active: {
-    color: { default: colors.text, ":hover": colors.text },
+    color: { default: colors.accent2, ":hover": colors.accent2 },
+    backgroundColor: { default: colors.panel3, ":hover": colors.panel3 },
+    boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 1px 3px rgba(0, 0, 0, 0.2)",
     fontWeight: 600,
-    "::after": {
-      content: '""',
-      position: "absolute",
-      left: 6,
-      right: 6,
-      bottom: -1,
-      height: 2,
-      borderRadius: 2,
-      backgroundColor: colors.accent,
-    },
   },
 });
 
-/** The library's tab bar: content-sized tabs, an accent underline, arrow keys to move. */
+/** The library's tab bar: compact tabs with arrow-key navigation. */
 export function LibraryTabs({
   value,
   onChange,
+  id,
 }: {
+  id: string;
   value: LibraryTab;
   onChange: (tab: LibraryTab) => void;
 }) {
@@ -81,9 +61,16 @@ export function LibraryTabs({
       role="tablist"
       aria-label="Library"
       onKeyDown={(e) => {
-        const step = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
-        if (!step) return;
+        const index = LIBRARY_TABS.findIndex((t) => t.value === value);
+        const step = {
+          ArrowRight: 1,
+          ArrowLeft: -1,
+          Home: -index,
+          End: LIBRARY_TABS.length - 1 - index,
+        }[e.key];
+        if (step === undefined) return;
         e.preventDefault();
+        e.stopPropagation();
         move(step);
       }}
       {...stylex.props(styles.list)}
@@ -95,6 +82,8 @@ export function LibraryTabs({
             key={tab.value}
             type="button"
             role="tab"
+            id={`${id}-${tab.value}`}
+            aria-controls={`${id}-panel`}
             data-tab={tab.value}
             aria-selected={selected}
             tabIndex={selected ? 0 : -1}

@@ -24,7 +24,7 @@ const styles = stylex.create({
     transitionProperty: "background-color",
     transitionDuration: "60ms",
   },
-  active: { backgroundColor: "rgba(255, 255, 255, 0.075)" },
+  active: { backgroundColor: colors.highlight },
   danger: { color: colors.danger },
   dangerActive: { backgroundColor: colors.dangerSoft },
   disabled: { color: colors.faint, cursor: "default" },

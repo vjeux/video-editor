@@ -10,6 +10,7 @@ import { colors, radii, shadows } from "../theme/tokens.stylex";
 import { SafeArea } from "./SafeArea";
 import { SelectionOverlay } from "./SelectionOverlay";
 import { Transport } from "./Transport";
+import { EmptyPreview } from "./EmptyPreview";
 
 const STAGE_PAD = 16;
 
@@ -32,6 +33,8 @@ const styles = stylex.create({
     flexShrink: 1,
     flexBasis: 0,
     minHeight: 0,
+    containerName: "preview",
+    containerType: "size",
   },
   frame: {
     position: "absolute",
@@ -47,24 +50,7 @@ const styles = stylex.create({
     height,
   }),
   canvas: { display: "block", width: "100%", height: "100%" },
-  empty: {
-    position: "absolute",
-    inset: 0,
-    display: "grid",
-    placeItems: "center",
-    textAlign: "center",
-    pointerEvents: "none",
-    color: colors.faint,
-    fontSize: 12,
-    lineHeight: 1.7,
-  },
-  emptyTitle: {
-    display: "block",
-    marginBottom: 2,
-    color: colors.muted,
-    fontSize: 14,
-    fontWeight: 600,
-  },
+  emptyFrame: { visibility: "hidden" },
 });
 
 export function Viewer() {
@@ -137,7 +123,7 @@ export function Viewer() {
 
   return (
     <main aria-label="Viewer" {...stylex.props(styles.viewer)}>
-      <PanelHeader title="Program">
+      <PanelHeader title="Preview" icon="film">
         <Select
           compact
           label="Canvas format"
@@ -160,7 +146,11 @@ export function Viewer() {
       </PanelHeader>
       <div ref={stage} {...stylex.props(styles.stage)}>
         <div
-          {...stylex.props(styles.frame, styles.rect(rect.left, rect.top, rect.width, rect.height))}
+          {...stylex.props(
+            styles.frame,
+            styles.rect(rect.left, rect.top, rect.width, rect.height),
+            isEmpty && styles.emptyFrame,
+          )}
         >
           <canvas ref={canvas} {...stylex.props(styles.canvas)} />
           {safe && <SafeArea />}
@@ -172,14 +162,7 @@ export function Viewer() {
           height={rect.height}
           scale={rect.width / settings.width}
         />
-        {isEmpty && (
-          <div {...stylex.props(styles.empty)}>
-            <div>
-              <b {...stylex.props(styles.emptyTitle)}>Nothing on the timeline yet</b>
-              Drop media into the bin, then drag it onto a track.
-            </div>
-          </div>
-        )}
+        {isEmpty && <EmptyPreview />}
       </div>
       <Transport onFullscreen={() => void stage.current?.requestFullscreen()} />
     </main>

@@ -36,6 +36,8 @@ const styles = stylex.create({
     borderWidth: 1,
     borderStyle: "solid",
     borderColor: "rgba(255, 255, 255, 0.12)",
+    // Clip surfaces stay dark in both themes, including their media thumbnails.
+    color: "#f8faff",
     touchAction: "none",
     filter: { default: null, ":hover": "brightness(1.12)" },
   },
@@ -66,14 +68,15 @@ const styles = stylex.create({
   adjustment: {
     borderStyle: "dashed",
     borderColor: "rgba(95, 224, 210, 0.55)",
-    backgroundColor: "rgba(35, 150, 140, 0.32)",
+    backgroundColor: "#214c48",
     backgroundImage:
       "repeating-linear-gradient(135deg, rgba(95, 224, 210, 0.16) 0 6px, transparent 6px 12px)",
   },
   shade: {
     position: "absolute",
     inset: 0,
-    backgroundImage: "linear-gradient(180deg, rgba(20, 30, 70, 0.55), transparent 45%)",
+    backgroundImage:
+      "linear-gradient(180deg, rgba(12, 18, 35, 0.8), rgba(12, 18, 35, 0.62) 20px, transparent 42px)",
     pointerEvents: "none",
   },
   label: {
@@ -126,36 +129,27 @@ const styles = stylex.create({
     position: "absolute",
     top: 0,
     bottom: 0,
-    width: 10,
+    width: 14,
     cursor: "ew-resize",
     zIndex: 3,
     display: "flex",
-    alignItems: "stretch",
+    alignItems: "center",
     paddingBlock: 3,
-    paddingInline: 2,
+    paddingInline: 3,
+    backgroundColor: { default: "transparent", ":hover": "rgba(255, 255, 255, 0.14)" },
   },
   handleStart: { left: 0, justifyContent: "flex-start" },
   handleEnd: { right: 0, justifyContent: "flex-end" },
   bar: {
     position: "relative",
-    width: 6,
-    borderRadius: 3,
+    width: 3,
+    height: 20,
+    maxHeight: "65%",
+    borderRadius: 2,
     backgroundColor: "rgba(255, 255, 255, 0.92)",
     boxShadow: "0 0 0 1px rgba(0, 0, 0, 0.35)",
     opacity: { default: 0, [stylex.when.ancestor(":hover")]: 0.75 },
     transition: "opacity 0.12s",
-    "::after": {
-      content: '""',
-      position: "absolute",
-      top: "50%",
-      left: "50%",
-      width: 2,
-      height: 10,
-      maxHeight: "60%",
-      borderRadius: 1,
-      backgroundColor: "rgba(0, 0, 0, 0.45)",
-      transform: "translate(-50%, -50%)",
-    },
   },
   barSelected: { opacity: 1 },
   /** A pause that silence removal would cut. */
@@ -376,6 +370,7 @@ export function ClipView({
         (["start", "end"] as const).map((edge) => (
           <span
             key={edge}
+            title={`Drag to trim ${edge}`}
             {...stylex.props(
               styles.handle,
               edge === "start" ? styles.handleStart : styles.handleEnd,

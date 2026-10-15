@@ -26,10 +26,10 @@ const styles = stylex.create({
   grip: {
     position: "relative",
     width: 44,
-    height: 5,
+    height: 3,
     borderRadius: radii.pill,
     backgroundColor: colors.line2,
-    boxShadow: "0 0 0 2px rgba(14, 15, 18, 0.9)",
+    boxShadow: `0 0 0 2px ${colors.panel}`,
     transition: "background-color 0.15s, width 0.15s",
   },
   gripActive: { width: 64, backgroundColor: colors.accent2 },
@@ -38,10 +38,14 @@ const styles = stylex.create({
 /** Drag handle between the editor panels and the timeline; double-click resets. */
 export function TimelineSplitter({
   height,
+  minHeight,
+  maxHeight,
   onResize,
   onReset,
 }: {
   height: number;
+  minHeight: number;
+  maxHeight: number;
   onResize: (height: number) => void;
   onReset: () => void;
 }) {
@@ -50,6 +54,8 @@ export function TimelineSplitter({
   const active = hover || dragging;
 
   const start = (e: PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
     const startY = e.clientY;
     const target = e.currentTarget;
     target.setPointerCapture(e.pointerId);
@@ -58,10 +64,12 @@ export function TimelineSplitter({
     const up = () => {
       target.removeEventListener("pointermove", move);
       target.removeEventListener("pointerup", up);
+      target.removeEventListener("pointercancel", up);
       setDragging(false);
     };
     target.addEventListener("pointermove", move);
     target.addEventListener("pointerup", up);
+    target.addEventListener("pointercancel", up);
   };
 
   return (
@@ -69,7 +77,24 @@ export function TimelineSplitter({
       role="separator"
       aria-orientation="horizontal"
       aria-label="Resize timeline"
-      title="Drag to resize · double-click to reset"
+      aria-controls="timeline-panel"
+      aria-valuenow={height}
+      aria-valuemin={minHeight}
+      aria-valuemax={maxHeight}
+      aria-valuetext={`${height} pixels high`}
+      tabIndex={0}
+      title="Drag or use arrow keys to resize · double-click or Enter to reset"
+      onKeyDown={(e) => {
+        if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+          e.preventDefault();
+          e.stopPropagation();
+          onResize(height + (e.key === "ArrowUp" ? 1 : -1) * (e.shiftKey ? 40 : 10));
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          e.stopPropagation();
+          onReset();
+        }
+      }}
       onPointerDown={start}
       onPointerEnter={() => setHover(true)}
       onPointerLeave={() => setHover(false)}

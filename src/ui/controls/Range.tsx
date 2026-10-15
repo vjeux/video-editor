@@ -3,7 +3,7 @@ import { useState, type KeyboardEvent, type PointerEvent } from "react";
 import { colors, motion, shadows } from "../theme/tokens.stylex";
 import { fillOrigin, percentOf, snap, valueAt } from "./number-math";
 
-const THUMB = 14;
+const THUMB = 12;
 
 const styles = stylex.create({
   root: {
@@ -11,7 +11,7 @@ const styles = stylex.create({
     flexGrow: 1,
     width: "100%",
     minWidth: 0,
-    height: 18,
+    height: 30,
     cursor: "pointer",
     touchAction: "none",
     outline: "none",
@@ -29,10 +29,10 @@ const styles = stylex.create({
     top: "50%",
     height: 4,
     marginTop: -2,
-    borderRadius: 2,
+    borderRadius: 4,
     backgroundColor: {
       default: colors.line2,
-      [stylex.when.ancestor(":hover")]: "#3a404d",
+      [stylex.when.ancestor(":hover")]: "#4a5366",
     },
     boxShadow: "inset 0 1px 1px rgba(0, 0, 0, 0.3)",
     transitionProperty: "background-color",
@@ -48,7 +48,11 @@ const styles = stylex.create({
     boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.15)",
   },
   mono: { backgroundColor: colors.muted },
-  span: (from: number, to: number) => ({ left: `${from}%`, width: `${to - from}%` }),
+  // Match the track's end caps while keeping interior fills aligned to the thumb.
+  span: (from: number, to: number) => ({
+    left: from === 0 ? -THUMB / 2 : `${from}%`,
+    right: to === 100 ? -THUMB / 2 : `${100 - to}%`,
+  }),
   tick: {
     position: "absolute",
     top: "50%",
@@ -69,7 +73,9 @@ const styles = stylex.create({
     marginLeft: -THUMB / 2,
     borderRadius: "50%",
     backgroundColor: "#fff",
-    backgroundImage: "linear-gradient(180deg, #fff, #e6e7ee)",
+    borderWidth: 2,
+    borderStyle: "solid",
+    borderColor: colors.accent2,
     boxShadow: {
       default: shadows.thumb,
       [stylex.when.ancestor(":hover")]: `${shadows.thumb}, 0 0 0 4px ${colors.accentSoft}`,
@@ -110,6 +116,7 @@ export function Range({
   label,
   tone = "accent",
   defaultValue,
+  valueText,
 }: {
   value: number;
   min: number;
@@ -121,6 +128,7 @@ export function Range({
   label: string;
   tone?: "accent" | "mono";
   defaultValue?: number;
+  valueText?: string;
 }) {
   const [dragging, setDragging] = useState(false);
   const clamped = Math.min(max, Math.max(min, value));
@@ -144,6 +152,8 @@ export function Range({
       aria-valuemin={min}
       aria-valuemax={max}
       aria-valuenow={value}
+      aria-valuetext={valueText}
+      title={defaultValue === undefined ? undefined : "Double-click to reset"}
       onPointerDown={(e) => {
         if (e.button !== 0) return;
         e.preventDefault();
@@ -154,6 +164,11 @@ export function Range({
       }}
       onPointerMove={(e) => dragging && fromPointer(e)}
       onPointerUp={() => {
+        if (!dragging) return;
+        setDragging(false);
+        onCommitEnd?.();
+      }}
+      onPointerCancel={() => {
         if (!dragging) return;
         setDragging(false);
         onCommitEnd?.();

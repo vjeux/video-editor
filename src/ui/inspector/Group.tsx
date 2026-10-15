@@ -4,7 +4,7 @@ import { colors } from "../theme/tokens.stylex";
 
 const styles = stylex.create({
   group: {
-    padding: 12,
+    padding: 16,
     borderBottomWidth: 1,
     borderBottomStyle: "solid",
     borderBottomColor: colors.line,
@@ -15,9 +15,8 @@ const styles = stylex.create({
     marginBottom: 10,
     fontSize: 11,
     fontWeight: 600,
-    textTransform: "uppercase",
-    letterSpacing: "0.6px",
-    color: colors.muted,
+    letterSpacing: "0.2px",
+    color: colors.text,
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",

@@ -5,8 +5,8 @@ import { colors, radii } from "../theme/tokens.stylex";
 const styles = stylex.create({
   box: {
     flexShrink: 0,
-    height: 30,
-    marginTop: 10,
+    height: 32,
+    marginTop: 0,
     marginInline: 12,
     marginBottom: 6,
     paddingBlock: 0,
@@ -17,7 +17,7 @@ const styles = stylex.create({
     borderRadius: radii.md,
     borderWidth: 1,
     borderStyle: "solid",
-    borderColor: { default: colors.line, ":focus-within": colors.line2 },
+    borderColor: { default: colors.line, ":focus-within": colors.accent },
     backgroundColor: colors.bg,
     color: colors.faint,
   },

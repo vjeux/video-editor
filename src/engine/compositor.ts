@@ -6,7 +6,7 @@ import { containSize } from "../core/layout";
 import { clipEnd, frameSourceTime } from "../core/timeline";
 import type { Clip, EffectDefinition, MediaClip, Project, TextClip } from "../core/types";
 import type { GpuEffects, GpuPass } from "./gpu";
-import { drawText, layoutText } from "./text-renderer";
+import { drawText, textBounds } from "./text-renderer";
 
 export { fontFor, layoutText, type TextLayout } from "./text-renderer";
 
@@ -22,7 +22,7 @@ export function layerSize(
   project: Project,
   clip: Clip,
 ): { width: number; height: number } {
-  if (clip.type === "text") return layoutText(ctx, clip);
+  if (clip.type === "text") return textBounds(ctx, clip);
   if (clip.type === "adjustment")
     return { width: project.settings.width, height: project.settings.height };
   const asset = project.assets[clip.assetId];

@@ -90,15 +90,40 @@ const styles = stylex.create({
     padding: 0,
     borderWidth: 0,
     borderRadius: 5,
-    display: {
-      default: "none",
-      [stylex.when.ancestor(":hover")]: "grid",
-      ":focus-visible": "grid",
+    display: "grid",
+    opacity: {
+      default: 0,
+      [stylex.when.ancestor(":hover")]: 1,
+      [stylex.when.ancestor(":focus-within")]: 1,
+      "@media (hover: none)": 1,
     },
     placeItems: "center",
     backgroundColor: { default: "rgba(0, 0, 0, 0.65)", ":hover": "rgba(0, 0, 0, 0.85)" },
     color: { default: "#ddd", ":hover": colors.danger },
     cursor: "pointer",
+  },
+  add: {
+    position: "absolute",
+    right: 5,
+    bottom: 5,
+    width: 26,
+    height: 26,
+    padding: 0,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: colors.line2,
+    borderRadius: radii.md,
+    display: "grid",
+    placeItems: "center",
+    backgroundColor: { default: colors.panel2, ":hover": colors.accent },
+    color: "#fff",
+    cursor: "pointer",
+    opacity: {
+      default: 0,
+      [stylex.when.ancestor(":hover")]: 1,
+      [stylex.when.ancestor(":focus-within")]: 1,
+      "@media (hover: none)": 1,
+    },
   },
   name: {
     marginTop: 5,
@@ -151,6 +176,21 @@ export function AssetCard({ asset, used }: { asset: Asset; used: boolean }) {
           <span {...stylex.props(styles.duration)}>{formatDuration(asset.duration)}</span>
         )}
         {broken && <span {...stylex.props(styles.badge)}>{status}</span>}
+        <button
+          type="button"
+          disabled={!ready}
+          aria-label={`Add ${asset.name} to timeline`}
+          title="Add to timeline"
+          onClick={(e) => {
+            e.stopPropagation();
+            addAssetToTimeline(asset.id);
+          }}
+          onDoubleClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          {...stylex.props(styles.add)}
+        >
+          <Icon name="plus" size={15} />
+        </button>
       </div>
       <button
         type="button"

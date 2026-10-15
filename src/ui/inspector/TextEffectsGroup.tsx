@@ -30,7 +30,8 @@ export function TextEffectsGroup({ clip }: { clip: TextClip }) {
             <ColorInput
               label="Shadow colour"
               value={shadow.color}
-              onChange={(color) => set({ shadow: { ...shadow, color } }, "shadow-color")}
+              allowAlpha
+              onChange={(color, key) => set({ shadow: { ...shadow, color } }, key)}
             />
           )
         }
@@ -74,7 +75,8 @@ export function TextEffectsGroup({ clip }: { clip: TextClip }) {
             <ColorInput
               label="Glow colour"
               value={glow.color}
-              onChange={(color) => set({ glow: { ...glow, color } }, "glow-color")}
+              allowAlpha
+              onChange={(color, key) => set({ glow: { ...glow, color } }, key)}
             />
           )
         }
@@ -101,12 +103,14 @@ export function TextEffectsGroup({ clip }: { clip: TextClip }) {
               <ColorInput
                 label="Gradient start"
                 value={gradient.from}
-                onChange={(from) => set({ gradient: { ...gradient, from } }, "gradient-from")}
+                allowAlpha
+                onChange={(from, key) => set({ gradient: { ...gradient, from } }, key)}
               />
               <ColorInput
                 label="Gradient end"
                 value={gradient.to}
-                onChange={(to) => set({ gradient: { ...gradient, to } }, "gradient-to")}
+                allowAlpha
+                onChange={(to, key) => set({ gradient: { ...gradient, to } }, key)}
               />
             </>
           )
@@ -134,7 +138,8 @@ export function TextEffectsGroup({ clip }: { clip: TextClip }) {
             <ColorInput
               label="Highlight colour"
               value={highlight.color}
-              onChange={(color) => set({ highlight: { ...highlight, color } }, "highlight-color")}
+              allowAlpha
+              onChange={(color, key) => set({ highlight: { ...highlight, color } }, key)}
             />
           )
         }
