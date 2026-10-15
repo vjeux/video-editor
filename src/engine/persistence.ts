@@ -6,7 +6,8 @@ const media = createStore("cutline-media", "files");
 const CURRENT = "current";
 
 export const saveProject = (project: Project) => set(CURRENT, project, projects);
-export const loadProject = () => get<Project>(CURRENT, projects);
+/** Raw saved data; run it through `migrateProject` before use. */
+export const loadProject = () => get<unknown>(CURRENT, projects);
 
 export const saveMedia = (id: Id, file: Blob) => set(id, file, media);
 export const loadMedia = (id: Id) => get<Blob>(id, media);
