@@ -82,3 +82,13 @@ describe("textAnimationState", () => {
     expect(textAnimationState(animated("blur"), 3).blur).toBe(0);
   });
 });
+
+describe("new titles", () => {
+  it("are fully visible on their first frame, where the playhead sits when added", () => {
+    const clip = textClip("t", 3, 4) as TextClip;
+    const first = textAnimationState(clip, clip.start);
+    expect(first.opacity).toBe(1);
+    expect(first.visibleChars).toBeGreaterThanOrEqual(clip.text.length);
+    expect(clipOpacityAt(clip, clip.start)).toBe(1);
+  });
+});
