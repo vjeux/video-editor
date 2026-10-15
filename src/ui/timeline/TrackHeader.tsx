@@ -64,6 +64,8 @@ const styles = stylex.create({
     paddingInline: 4,
     outline: "none",
     textOverflow: "ellipsis",
+    // Too narrow to read on phones: keep the spacing, show the name as a tooltip.
+    visibility: { default: "visible", "@media (max-width: 599px)": "hidden" },
   },
   mini: {
     width: 20,
@@ -119,6 +121,7 @@ export function TrackHeader({ track }: { track: Track }) {
 
   return (
     <div
+      title={track.name}
       onContextMenu={(e) => openMenu(e, trackMenu(track.id))}
       {...stylex.props(styles.head, styles.height(LANE_HEIGHT[track.kind]))}
     >

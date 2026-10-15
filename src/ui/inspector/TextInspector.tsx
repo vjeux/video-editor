@@ -16,6 +16,9 @@ import { EffectsGroup } from "./EffectsGroup";
 import { FadeGroup } from "./FadeGroup";
 import { CaptionPresets } from "./CaptionPresets";
 import { Group } from "./Group";
+import { KaraokeGroup } from "./KaraokeGroup";
+import { TextEffectsGroup } from "./TextEffectsGroup";
+import { WordAnimationGroup } from "./WordAnimationGroup";
 import { OutlineRow } from "./OutlineRow";
 import { BOX_BACKGROUND, COLORS, FONTS, WEIGHTS } from "./options";
 import { TransformGroup } from "./TransformGroup";
@@ -123,6 +126,9 @@ export function TextInspector({ clip }: { clip: TextClip }) {
       <Group title="Caption style">
         <CaptionPresets clip={clip} />
       </Group>
+      <TextEffectsGroup clip={clip} />
+      <WordAnimationGroup clip={clip} />
+      <KaraokeGroup clip={clip} />
       <Group title="Text animation">
         <AnimationPresets clip={clip} />
       </Group>

@@ -6,8 +6,8 @@ const TITLE = "Add adjustment layer at playhead";
 
 const styles = stylex.create({
   button: {
-    width: 30,
-    height: 30,
+    width: { default: 30, "@media (max-width: 599px)": 24 },
+    height: { default: 30, "@media (max-width: 599px)": 24 },
     flexShrink: 0,
     padding: 0,
     borderWidth: 0,

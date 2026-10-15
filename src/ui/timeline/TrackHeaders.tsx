@@ -7,15 +7,15 @@ import { useEditor } from "../../store";
 import { colors, radii } from "../theme/tokens.stylex";
 import { TrackHeader } from "./TrackHeader";
 
-const ADDABLE: { kind: TrackKind; label: string; title: string }[] = [
-  { kind: "video", label: "+ Video", title: "Add video track" },
-  { kind: "audio", label: "+ Audio", title: "Add audio track" },
-  { kind: "text", label: "+ Title", title: "Add title track" },
+const ADDABLE: { kind: TrackKind; label: string; short: string; title: string }[] = [
+  { kind: "video", label: "+ Video", short: "+V", title: "Add video track" },
+  { kind: "audio", label: "+ Audio", short: "+A", title: "Add audio track" },
+  { kind: "text", label: "+ Title", short: "+T", title: "Add title track" },
 ];
 
 const styles = stylex.create({
   heads: {
-    width: 200,
+    width: { default: 200, "@media (max-width: 599px)": 132 },
     flexShrink: 0,
     borderRightWidth: 1,
     borderRightStyle: "solid",
@@ -37,6 +37,8 @@ const styles = stylex.create({
     paddingBlock: 0,
     paddingInline: 6,
   },
+  full: { display: { default: "inline", "@media (max-width: 599px)": "none" } },
+  short: { display: { default: "none", "@media (max-width: 599px)": "inline" } },
   add: {
     fontSize: 11,
     paddingBlock: 2,
@@ -62,15 +64,17 @@ export function TrackHeaders({ scrollRef }: { scrollRef: RefObject<HTMLDivElemen
   return (
     <div {...stylex.props(styles.heads)}>
       <div {...stylex.props(styles.pad)}>
-        {ADDABLE.map(({ kind, label, title }) => (
+        {ADDABLE.map(({ kind, label, short, title }) => (
           <button
             key={kind}
             type="button"
             title={title}
+            aria-label={title}
             onClick={() => commit((p) => addTrack(p, kind, newId()).project)}
             {...stylex.props(styles.add)}
           >
-            {label}
+            <span {...stylex.props(styles.full)}>{label}</span>
+            <span {...stylex.props(styles.short)}>{short}</span>
           </button>
         ))}
       </div>

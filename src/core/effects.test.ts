@@ -218,6 +218,40 @@ describe("migrateProject", () => {
     expect(migrateProject(v2)).toEqual(current);
   });
 
+  it("repairs current-version projects whose clips were written by older code", () => {
+    const current = withClips(twoClips(), textClip("t", 0, 2));
+    const damaged = JSON.parse(JSON.stringify(current)) as {
+      clips: Record<string, Record<string, unknown> & { style?: Record<string, unknown> }>;
+    };
+    for (const clip of Object.values(damaged.clips)) {
+      delete clip.effects;
+      delete clip.transitionIn;
+      delete clip.animationLoop;
+      delete clip.audioEffects;
+      delete clip.speedRamp;
+      delete clip.style?.stroke;
+    }
+    delete (damaged as Record<string, unknown>).customEffects;
+    expect(migrateProject(damaged)).toEqual(current);
+  });
+
+  it("never overwrites values the project already has", () => {
+    const base = twoClips();
+    const tuned = {
+      ...base,
+      clips: {
+        ...base.clips,
+        a: {
+          ...base.clips.a!,
+          speedRamp: "velocity",
+          audioEffects: [{ id: "x", effectId: "reverb", enabled: true, params: {} }],
+          animationLoop: { presetId: "pulse", duration: 1, easing: "linear" as const },
+        },
+      },
+    };
+    expect(migrateProject(JSON.parse(JSON.stringify(tuned)))).toEqual(tuned);
+  });
+
   it("rejects unknown data", () => {
     expect(() => migrateProject({ version: 99 })).toThrow(/version/);
   });

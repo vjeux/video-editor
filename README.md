@@ -40,7 +40,11 @@ Built on [Mediabunny](https://mediabunny.dev/) + WebCodecs · React 19 · StyleX
   telephone, megaphone, muffled, pitch shift, robot, distortion, tremolo,
   filter, pan and gain. They're heard in playback and baked into the export.
 - **Captions and titles.** Eight bundled fonts with weight, tracking, colour,
-  a box, an outline, and one-click Bold, Highlight and Gaming caption looks.
+  a box and an outline, plus text looks: adjustable drop shadow, neon glow,
+  gradient fill, line or word highlight box and a sweeping shine. Per-letter,
+  per-word or per-line animation (pop, slide, bounce, typewriter, wave, jiggle
+  and more, with stagger and easing), karaoke word highlighting, and one-click
+  Bold, Hormozi, Karaoke, Gaming, Neon and Gradient caption looks.
 - **Clip controls.** Transform, opacity, volume up to 200%, speed from 0.1× to
   8×, velocity speed ramps, freeze frames (`F`) and fade in/out.
 - **Export** to MP4 (H.264/AAC) or WebM (VP9/Opus) at any resolution. You get

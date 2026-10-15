@@ -6,14 +6,21 @@ import { colors, fonts } from "../theme/tokens.stylex";
 
 const styles = stylex.create({
   timecode: {
+    minWidth: 0,
+    overflow: "hidden",
+    textOverflow: "clip",
     fontFamily: fonts.mono,
-    fontSize: 15,
+    fontSize: { default: 15, "@container transport (max-width: 480px)": 13 },
     fontWeight: 500,
     letterSpacing: "0.5px",
     whiteSpace: "nowrap",
     color: colors.text,
   },
-  total: { color: colors.faint, fontSize: 12 },
+  total: {
+    color: colors.faint,
+    fontSize: 12,
+    display: { default: "inline", "@container transport (max-width: 640px)": "none" },
+  },
 });
 
 export function Timecode() {
