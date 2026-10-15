@@ -1,6 +1,6 @@
 import {
   detectSilences,
-  levelEnvelope,
+  LevelStream,
   removeSpans,
   silencesInClip,
   spansLength,
@@ -19,19 +19,29 @@ import { media, newId } from "./engine";
 const FRAME = 0.01;
 
 const state = () => editorStore.getState();
-const envelopes = new WeakMap<AudioBuffer, Float32Array>();
+const envelopes = new Map<Id, Promise<Float32Array>>();
 
-/** The asset's level envelope, computed once per decoded file. */
-async function levelsOf(assetId: Id): Promise<Float32Array> {
-  const audio = await media.audioBuffer(assetId);
-  if (!audio) throw new Error("This clip's audio could not be decoded");
-  let levels = envelopes.get(audio);
+async function scanLevels(assetId: Id): Promise<Float32Array> {
+  let stream = null as LevelStream | null;
+  const found = await media.scanAudio(assetId, (channels, at, sampleRate) => {
+    stream ??= new LevelStream(sampleRate, FRAME);
+    stream.add(channels, at);
+  });
+  const levels = stream?.levels();
+  if (!found || !levels) throw new Error("This clip's audio could not be decoded");
+  return levels;
+}
+
+/**
+ * The asset's level envelope, streamed once per file (a few hundred KB an
+ * hour) without holding its decoded sound.
+ */
+function levelsOf(assetId: Id): Promise<Float32Array> {
+  let levels = envelopes.get(assetId);
   if (!levels) {
-    const channels = Array.from({ length: audio.numberOfChannels }, (_, c) =>
-      audio.getChannelData(c),
-    );
-    levels = levelEnvelope(channels, audio.sampleRate, FRAME);
-    envelopes.set(audio, levels);
+    levels = scanLevels(assetId);
+    envelopes.set(assetId, levels);
+    levels.catch(() => envelopes.delete(assetId));
   }
   return levels;
 }

@@ -138,7 +138,10 @@ async function assetsSettled(m, timeoutMs) {
       return Object.values(project.assets).every((asset) => {
         const r = runtime[asset.id];
         if (r?.status === "error") throw new Error(r.error);
-        return r?.status === "ready" && r.filmstrip && (!asset.hasAudio || r.peaks);
+        // Waveforms fill in while long files decode: wait for the whole one.
+        const peaks =
+          !asset.hasAudio || (r?.peaks?.length ?? 0) >= Math.floor((asset.duration ?? 0) * 100) - 1;
+        return r?.status === "ready" && r.filmstrip && peaks;
       });
     },
     timeoutMs,

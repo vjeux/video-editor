@@ -1,3 +1,4 @@
+import { peakBucket, PeakStream } from "../core/audio-windows";
 import { addEffect } from "../core/effects";
 import { createMediaClip } from "../core/factories";
 import { layerClips, layersAt } from "../core/layers";
@@ -25,18 +26,23 @@ const FILMSTRIP_HEIGHT = 72;
 const POSTER_HEIGHT = 180;
 const MAX_FILMSTRIP_FRAMES = 120;
 
-function computePeaks(buffer: AudioBuffer): Float32Array {
-  const bucket = Math.max(1, Math.floor(buffer.sampleRate / PEAKS_PER_SECOND));
-  const peaks = new Float32Array(Math.ceil(buffer.length / bucket));
-  for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
-    const data = buffer.getChannelData(ch);
-    for (let i = 0; i < data.length; i++) {
-      const v = Math.abs(data[i] ?? 0);
-      const b = (i / bucket) | 0;
-      if (v > (peaks[b] ?? 0)) peaks[b] = v;
+/** How often a long file's waveform grows on screen while it decodes. */
+const PEAKS_REFRESH_MS = 1000;
+
+/** Streams the asset's sound once into its waveform, showing it as it fills in. */
+async function streamPeaks(assetId: Id) {
+  const { patch } = mediaStore.getState();
+  let stream = null as PeakStream | null;
+  let shown = performance.now();
+  await media.scanAudio(assetId, (channels, at, sampleRate) => {
+    stream ??= new PeakStream(peakBucket(sampleRate, PEAKS_PER_SECOND));
+    stream.add(channels, at);
+    if (performance.now() - shown > PEAKS_REFRESH_MS) {
+      shown = performance.now();
+      patch(assetId, { peaks: stream.peaks() });
     }
-  }
-  return peaks;
+  });
+  if (stream) patch(assetId, { peaks: stream.peaks() });
 }
 
 /** Builds posters, filmstrips and waveforms after a file is decodable. */
@@ -57,10 +63,7 @@ async function hydrate(asset: Asset) {
   } else {
     patch(asset.id, { status: "ready" });
   }
-  if (asset.hasAudio) {
-    const buffer = await media.audioBuffer(asset.id);
-    if (buffer) patch(asset.id, { peaks: computePeaks(buffer) });
-  }
+  if (asset.hasAudio) await streamPeaks(asset.id);
 }
 
 /** Decodes an asset's stored file into the media library (import or session restore). */

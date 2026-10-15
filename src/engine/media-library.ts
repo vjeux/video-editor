@@ -177,6 +177,35 @@ export class MediaLibrary {
     });
   }
 
+  private audioTrack(id: Id): InputAudioTrack | null {
+    const entry = this.entries.get(id);
+    return entry && entry.kind !== "image" ? entry.audio : null;
+  }
+
+  /**
+   * Decodes the asset's whole sound once, chunk by chunk, handing `visit`
+   * each chunk's channels and the index of its first sample. Nothing is
+   * kept, so memory stays flat however long the file. False without sound.
+   */
+  async scanAudio(
+    id: Id,
+    visit: (channels: Float32Array[], at: number, sampleRate: number) => void,
+  ): Promise<boolean> {
+    const track = this.audioTrack(id);
+    if (!track) return false;
+    for await (const { buffer, timestamp } of new AudioBufferSink(track).buffers()) {
+      const at = Math.round(timestamp * buffer.sampleRate);
+      // Encoder priming can sit before zero; those samples are never heard.
+      const skip = Math.max(0, -at);
+      if (skip >= buffer.length) continue;
+      const channels = Array.from({ length: buffer.numberOfChannels }, (_, c) =>
+        buffer.getChannelData(c).subarray(skip),
+      );
+      visit(channels, at + skip, buffer.sampleRate);
+    }
+    return true;
+  }
+
   /** Whole-file decode into one AudioBuffer, shared by playback, export and waveforms. */
   audioBuffer(id: Id): Promise<AudioBuffer | null> {
     let pending = this.audioBuffers.get(id);
