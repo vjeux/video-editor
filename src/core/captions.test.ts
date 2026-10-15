@@ -82,6 +82,14 @@ describe("mergeWindows", () => {
       ]),
     ).toEqual([w("a", 10, 10.4), w("b", 27.5, 27.9), w("c", 28.2, 28.6), w("d", 31, 31.5)]);
   });
+
+  it("keeps a last word timed past the end of the audio, clamped to it", () => {
+    const [only] = transcriptionWindows(6.3);
+    if (!only) throw new Error("expected a window");
+    expect(mergeWindows([{ window: only, words: [w("end.", 6.12, 8.46)] }])).toEqual([
+      w("end.", 6.12, 6.3),
+    ]);
+  });
 });
 
 const OPTIONS: CaptionOptions = {
@@ -123,6 +131,24 @@ describe("chunkCaptions", () => {
     expect(chunkCaptions(words, OPTIONS)[2]?.words).toEqual([
       w("five", 0, 0.3),
       w("six", 0.3, 0.6),
+    ]);
+  });
+
+  it("breaks after a clause once the caption is half full", () => {
+    const said = [
+      w("Welcome", 0, 0.3),
+      w("back", 0.3, 0.5),
+      w("to", 0.5, 0.6),
+      w("the", 0.6, 0.8),
+      w("channel,", 0.8, 1.2),
+      w("today", 1.3, 1.5),
+      w("we", 1.5, 1.7),
+      w("are", 1.7, 2),
+    ];
+    expect(chunkCaptions(said, OPTIONS).map((c) => c.text)).toEqual([
+      "Welcome back to",
+      "the channel,",
+      "today we are",
     ]);
   });
 
