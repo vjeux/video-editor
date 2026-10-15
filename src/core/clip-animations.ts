@@ -13,8 +13,11 @@ export interface MotionDelta {
 export interface AnimationPreset {
   id: string;
   name: string;
-  group: "motion" | "reveal";
-  /** Motion presets: the delta at eased progress 0 (hidden) … 1 (in place). */
+  /** Enter/exit presets are "motion" or "reveal"; "loop" presets cycle for the whole clip. */
+  group: "motion" | "reveal" | "loop";
+  /** Easing the UI suggests when this preset is picked. */
+  easing?: Easing;
+  /** Motion presets: the delta at eased progress 0 (hidden) … 1 (in place); loops get the cycle phase 0 … 1. */
   motion?: (p: number) => Partial<MotionDelta>;
   /** Reveal presets: an effect driven by its `progress` uniform. */
   effectId?: string;
@@ -51,12 +54,22 @@ const EASING_FNS: Record<Easing, (p: number) => number> = {
 export const EASINGS = Object.keys(EASING_FNS) as Easing[];
 export const ease = (easing: Easing, p: number) => EASING_FNS[easing](Math.min(1, Math.max(0, p)));
 
-const preset = (id: string, name: string, motion: AnimationPreset["motion"]): AnimationPreset => ({
+const preset = (
+  id: string,
+  name: string,
+  motion: AnimationPreset["motion"],
+  easing?: Easing,
+): AnimationPreset => ({ id, name, group: "motion", motion, ...(easing && { easing }) });
+const loop = (id: string, name: string, motion: AnimationPreset["motion"]): AnimationPreset => ({
   id,
   name,
-  group: "motion",
+  group: "loop",
   motion,
 });
+const wave = (phase: number) => Math.sin(phase * 2 * Math.PI);
+/** A smooth bump centred on `at` within a cycle (for heartbeats). */
+const bump = (phase: number, at: number) => Math.exp(-(((phase - at) / 0.06) ** 2));
+
 const reveal = (id: string, name: string, effectId: string): AnimationPreset => ({
   id,
   name,
@@ -87,6 +100,43 @@ export const ANIMATION_PRESETS: Record<string, AnimationPreset> = Object.fromEnt
     reveal("pixelate", "Pixelate", "reveal-pixelate"),
     reveal("glitch", "Glitch", "reveal-glitch"),
     reveal("dissolve", "Dissolve", "reveal-dissolve"),
+    preset(
+      "elastic",
+      "Elastic",
+      (p) => ({
+        scale: 0.4 + 0.6 * p,
+        opacity: Math.min(1, p * 3),
+      }),
+      "elasticOut",
+    ),
+    preset(
+      "bounce",
+      "Bounce in",
+      (p) => ({
+        dy: -0.35 * (1 - p),
+        opacity: Math.min(1, p * 4),
+      }),
+      "bounceOut",
+    ),
+    preset("shake", "Shake in", (p) => ({
+      dx: 0.04 * Math.sin(p * 40) * (1 - p),
+      opacity: Math.min(1, p * 4),
+    })),
+    preset("flicker", "Flicker", (p) => ({
+      opacity: p >= 0.999 ? 1 : Math.sin(p * 70) > 0 ? p : p * 0.15,
+    })),
+    loop("pulse", "Pulse", (phase) => ({ scale: 1 + 0.06 * Math.max(0, wave(phase)) })),
+    loop("breathe", "Breathe", (phase) => ({
+      scale: 1 + 0.03 * wave(phase),
+      opacity: 0.9 + 0.1 * Math.cos(phase * 2 * Math.PI),
+    })),
+    loop("float", "Float", (phase) => ({ dy: 0.015 * wave(phase) })),
+    loop("wiggle", "Wiggle", (phase) => ({ rotation: 4 * wave(phase) })),
+    loop("heartbeat", "Heartbeat", (phase) => ({
+      scale: 1 + 0.09 * bump(phase, 0.15) + 0.06 * bump(phase, 0.35),
+    })),
+    loop("sway", "Sway", (phase) => ({ rotation: 2.5 * wave(phase), dx: 0.01 * wave(phase) })),
+    loop("spinLoop", "Spin", (phase) => ({ rotation: 360 * phase })),
   ].map((p) => [p.id, p]),
 );
 
@@ -105,10 +155,14 @@ function apply(state: AnimationState, presetId: string, p: number) {
   };
 }
 
-/** Motion and reveal progress of a clip's enter/exit animations at `t`. */
+/** Motion and reveal progress of a clip's enter, exit and loop animations at `t`. */
 export function animationStateAt(clip: Clip, t: Seconds): AnimationState {
   const state: AnimationState = { motion: IDENTITY_MOTION, reveals: [] };
-  const { animationIn: enter, animationOut: exit } = clip;
+  const { animationIn: enter, animationOut: exit, animationLoop: cycle } = clip;
+  if (cycle && cycle.duration > 0) {
+    const elapsed = Math.max(0, t - clip.start);
+    apply(state, cycle.presetId, (elapsed % cycle.duration) / cycle.duration);
+  }
   const enterLength = Math.min(enter?.duration ?? 0, clip.duration);
   const exitLength = Math.min(exit?.duration ?? 0, clip.duration - enterLength);
   const local = t - clip.start;
@@ -120,17 +174,32 @@ export function animationStateAt(clip: Clip, t: Seconds): AnimationState {
   return state;
 }
 
-/** Sets or clears an enter/exit animation, shortening it so the two never overlap. */
+/**
+ * Sets or clears an enter, exit or loop animation. Enter and exit are
+ * shortened so they never overlap; loop presets only fit the loop slot.
+ */
 export function setAnimation(
   project: Project,
   clipId: Id,
   which: "in" | "out" | "loop",
   animation: ClipAnimation | null,
 ): Project {
-  if (animation && !ANIMATION_PRESETS[animation.presetId]) {
-    throw new Error(`Unknown animation preset ${animation.presetId}`);
+  const def = animation && ANIMATION_PRESETS[animation.presetId];
+  if (animation && !def) throw new Error(`Unknown animation preset ${animation.presetId}`);
+  if (def && (def.group === "loop") !== (which === "loop")) {
+    throw new Error(
+      which === "loop"
+        ? `${def.name} is not a loop animation`
+        : `${def.name} is a loop animation; use the Loop slot`,
+    );
   }
   const clip = findClip(project, clipId);
+  if (which === "loop") {
+    return {
+      ...project,
+      clips: { ...project.clips, [clipId]: { ...clip, animationLoop: animation } },
+    };
+  }
   const other = which === "in" ? clip.animationOut : clip.animationIn;
   const value = animation && {
     ...animation,
