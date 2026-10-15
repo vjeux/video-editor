@@ -1,3 +1,6 @@
+import { definitionFromSource, humanize } from "./shader-source";
+import type { EffectDefinition } from "./types";
+
 export interface CubeLut {
   title: string;
   size: number;
@@ -55,10 +58,22 @@ export function encodeLut(data: Float32Array): string {
 export const decodeLut = (base64: string): Uint8Array =>
   Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
 
-export const lutDefinition = (
-  _lut: CubeLut,
-  _id: string,
-  _fileName: string,
-): import("./types").EffectDefinition => {
-  throw new Error("not implemented");
-};
+/** The shader every LUT effect shares; the table itself is uploaded as a 3D texture. */
+export const LUT_SOURCE = `// @name LUT
+// @category LUT
+uniform float intensity; // = 1, min: 0, max: 1, label: Intensity
+vec4 effect(vec2 uv) {
+  vec4 c = getColor(uv);
+  return vec4(mix(c.rgb, applyLut(c.rgb), intensity), c.a);
+}`;
+
+/** Wraps a parsed `.cube` table as a colour-grading effect. */
+export function lutDefinition(lut: CubeLut, id: string, fileName: string): EffectDefinition {
+  return {
+    ...definitionFromSource(LUT_SOURCE, id),
+    name: lut.title || humanize(fileName),
+    category: "LUT",
+    description: `${lut.size}³ colour lookup table`,
+    lut: { size: lut.size, data: encodeLut(lut.data) },
+  };
+}

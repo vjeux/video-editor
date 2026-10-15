@@ -1,4 +1,6 @@
-import { createMediaClip, createTextClip } from "./factories";
+import { setAnimation } from "./clip-animations";
+import { addEffect, setTransition, updateEffect } from "./effects";
+import { createAdjustmentClip, createMediaClip, createTextClip } from "./factories";
 import {
   clipEnd,
   clipKind,
@@ -12,7 +14,18 @@ import {
   trimClip,
 } from "./timeline";
 import { trackFor, trackLabel } from "./tracks";
-import type { Clip, ClipKind, EffectDefinition, Id, IdFactory, Project, TextClip } from "./types";
+import type {
+  Clip,
+  ClipAnimation,
+  ClipKind,
+  EffectDefinition,
+  EffectKind,
+  Id,
+  IdFactory,
+  Params,
+  Project,
+  TextClip,
+} from "./types";
 
 export interface ScriptResult {
   project: Project;
@@ -50,7 +63,7 @@ export async function runScript(
   project: Project,
   code: string,
   newId: IdFactory,
-  _catalog: readonly EffectDefinition[] = [],
+  catalog: readonly EffectDefinition[] = [],
 ): Promise<ScriptResult> {
   let draft = project;
   const logs: string[] = [];
@@ -138,8 +151,60 @@ export async function runScript(
         );
         return place(copy);
       },
+      addEffect(effect: string, params: Params = {}) {
+        draft = addEffect(draft, [id], findEffect(effect, "effect"), newId);
+        const added = clip().effects.at(-1);
+        if (added) draft = updateEffect(draft, id, added.id, { params });
+        return this;
+      },
+      setTransition(effect: string | null, options: { duration?: number } & Params = {}) {
+        const { duration = 1, ...params } = options;
+        draft = setTransition(
+          draft,
+          id,
+          effect ? findEffect(effect, "transition") : null,
+          duration,
+        );
+        const transition = clip().transitionIn;
+        if (transition) {
+          draft = {
+            ...draft,
+            clips: {
+              ...draft.clips,
+              [id]: {
+                ...clip(),
+                transitionIn: { ...transition, params: { ...transition.params, ...params } },
+              },
+            },
+          };
+        }
+        return this;
+      },
+      animateIn(preset: string | null, options: Partial<ClipAnimation> = {}) {
+        draft = setAnimation(draft, id, "in", preset ? animation(preset, options) : null);
+        return this;
+      },
+      animateOut(preset: string | null, options: Partial<ClipAnimation> = {}) {
+        draft = setAnimation(draft, id, "out", preset ? animation(preset, options) : null);
+        return this;
+      },
     };
   };
+
+  const findEffect = (ref: string, kind: EffectKind): EffectDefinition => {
+    const lower = ref.toLowerCase();
+    const def = catalog.find(
+      (d) => d.kind === kind && (d.id === ref || d.name.toLowerCase() === lower),
+    );
+    if (!def) throw new Error(`No ${kind === "effect" ? "effect" : "transition"} "${ref}"`);
+    return def;
+  };
+
+  const animation = (presetId: string, options: Partial<ClipAnimation>): ClipAnimation => ({
+    presetId,
+    duration: options.duration ?? 0.5,
+    easing: options.easing ?? "easeOut",
+  });
 
   const timeline = {
     get duration() {
@@ -197,6 +262,21 @@ export async function runScript(
       const base: TextClip = createTextClip({ id: newId(), trackId: routed.trackId, start, text });
       const transform = { ...(x !== undefined && { x }), ...(y !== undefined && { y }) };
       return place(merge(base, { ...patch, transform }));
+    },
+    effects() {
+      return catalog.map(({ id, name, kind, category }) => ({ id, name, kind, category }));
+    },
+    addAdjustment(opts: { start?: number; duration?: number; track?: string } = {}) {
+      const routed = opts.track
+        ? { project: draft, trackId: trackId(opts.track) }
+        : trackFor(draft, "adjustment", newId);
+      draft = routed.project;
+      const base = createAdjustmentClip({
+        id: newId(),
+        trackId: routed.trackId,
+        start: opts.start ?? 0,
+      });
+      return place({ ...base, duration: opts.duration ?? base.duration });
     },
     addMarker(time: number, label = "") {
       draft = {
