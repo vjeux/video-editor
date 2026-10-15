@@ -21,7 +21,10 @@ Built on [Mediabunny](https://mediabunny.dev/) + WebCodecs · React 19 · StyleX
   trim, blade and split, ripple-delete, copy, paste and duplicate. Snapping
   covers edges, markers and the playhead. Tracks can be muted, soloed, hidden
   and locked. Drop a clip over others and it overwrites exactly the space it
-  covers.
+  covers. Each clip shows its effect stack as chips (click one to bypass it),
+  its in and out animations as bands with their easing curve (drag the edge
+  to retime), its loop as a badge, and each transition as a labelled block
+  over its cut (drag either edge to resize); right-click any of them for more.
 - **What you see is what you export.** The live preview and the export share
   one compositor, and live playback and the export mixdown share one Web Audio
   scheduler.

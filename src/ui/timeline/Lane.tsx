@@ -9,7 +9,7 @@ import { colors } from "../theme/tokens.stylex";
 import { ClipView, type ClipEdge } from "./ClipView";
 import { effectName } from "./effect-names";
 import { LANE_HEIGHT, type Viewport } from "./lanes";
-import { TransitionBadge } from "./TransitionBadge";
+import { TransitionBlock } from "./TransitionBlock";
 
 export type DropState = "ok" | "bad";
 
@@ -104,13 +104,15 @@ export function Lane({
         const span = transitionWindow(project, clip);
         if (!span) return null;
         return (
-          <TransitionBadge
+          <TransitionBlock
             key={`transition-${clip.id}`}
+            project={project}
             clipId={clip.id}
             transition={span.transition}
             name={effectName(project, span.transition.effectId)}
             left={timeToX(span.start, pps)}
             width={timeToX(span.duration, pps)}
+            pps={pps}
             locked={track.locked}
           />
         );
