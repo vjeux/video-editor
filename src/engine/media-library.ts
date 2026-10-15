@@ -9,6 +9,7 @@ import {
   type InputVideoTrack,
 } from "mediabunny";
 import type { AssetKind, Id } from "../core/types";
+import { AudioReader } from "./audio-reader";
 
 export interface ProbeResult {
   kind: AssetKind;
@@ -180,6 +181,15 @@ export class MediaLibrary {
   private audioTrack(id: Id): InputAudioTrack | null {
     const entry = this.entries.get(id);
     return entry && entry.kind !== "image" ? entry.audio : null;
+  }
+
+  /**
+   * Reads windows of the asset's sound in order (playback, export, captions);
+   * null when it has none. Nothing is decoded until the first read.
+   */
+  audioReader(id: Id): AudioReader | null {
+    const track = this.audioTrack(id);
+    return track && new AudioReader((from) => new AudioBufferSink(track).buffers(from));
   }
 
   /**

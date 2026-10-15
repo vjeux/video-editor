@@ -1,5 +1,6 @@
 import { cleanWords, mergeWindows, transcriptionWindows } from "../core/captions";
 import type { Seconds, TimedWord } from "../core/types";
+import type { AudioReader } from "./audio-reader";
 import type { WorkerMessage, WorkerRequest } from "./transcribe.worker";
 
 /** Whisper reads 16 kHz mono. */
@@ -66,37 +67,37 @@ function transcribeWindow(
   });
 }
 
-/** The range of `audio` as 16 kHz mono, mixed down by the browser. */
-async function resample(audio: AudioBuffer, from: Seconds, to: Seconds): Promise<Float32Array> {
+/** Source `from…to` as 16 kHz mono, read in order and mixed down by the browser. */
+async function resample(reader: AudioReader, from: Seconds, to: Seconds): Promise<Float32Array> {
   const length = Math.max(1, Math.ceil((to - from) * SAMPLE_RATE));
   const ctx = new OfflineAudioContext({ numberOfChannels: 1, length, sampleRate: SAMPLE_RATE });
-  const source = ctx.createBufferSource();
-  source.buffer = audio;
-  source.connect(ctx.destination);
-  source.start(0, from, to - from);
+  const slice = await reader.read(from, to);
+  if (slice) {
+    const source = ctx.createBufferSource();
+    source.buffer = slice.buffer;
+    source.connect(ctx.destination);
+    source.start(0, from - slice.start, to - from);
+  }
   return (await ctx.startRendering()).getChannelData(0);
 }
 
 /**
  * Transcribes `from…to` (source seconds) of `audio` into timed words, in
  * source time. Runs Whisper locally in a worker (WebGPU when available),
- * window by window so progress is real and cancelling stops promptly.
+ * window by window so progress is real, cancelling stops promptly and only
+ * one window of sound is ever decoded.
  */
 export async function transcribe(
-  audio: AudioBuffer,
+  audio: AudioReader,
   range: { from: Seconds; to: Seconds },
   { model, language, signal, onProgress }: TranscribeOptions,
 ): Promise<TimedWord[]> {
-  const samples = await resample(audio, range.from, range.to);
   const windows = transcriptionWindows(range.to - range.from);
   const results = [];
   onProgress({ stage: "loading", progress: 0 });
   for (const [i, window] of windows.entries()) {
     signal.throwIfAborted();
-    const slice = samples.slice(
-      Math.floor(window.start * SAMPLE_RATE),
-      Math.ceil(window.end * SAMPLE_RATE),
-    );
+    const slice = await resample(audio, range.from + window.start, range.from + window.end);
     const done = await transcribeWindow(
       { audio: slice, model: CAPTION_MODELS[model].id, language },
       signal,
