@@ -15,6 +15,8 @@ export interface FrameQueueOptions<F extends TimedFrame> {
   keyframeAtOrBefore: (t: number) => number | null;
   /** Decoded frames held ahead of the one shown. */
   lookahead?: number;
+  /** A seek landed after `ms` milliseconds. */
+  onSeek?: (ms: number) => void;
 }
 
 /** Without keyframe positions, jumps further than this restart decoding at the target. */
@@ -63,9 +65,6 @@ export class FrameQueue<F extends TimedFrame> {
   private disposed = false;
   /** Frames decoded but skipped to catch up. */
   dropped = 0;
-  /** Seeks started, and the last seek's latency in ms. */
-  seeks = 0;
-  lastSeekMs = 0;
 
   constructor(options: FrameQueueOptions<F>) {
     this.options = options;
@@ -156,7 +155,6 @@ export class FrameQueue<F extends TimedFrame> {
     this.ended = false;
     this.seeking = true;
     this.seekedFor = requestedFor;
-    this.seeks++;
     const startedAt = performance.now();
     const iterator = this.options.open(Math.max(0, start));
     this.iterator = iterator;
@@ -169,7 +167,7 @@ export class FrameQueue<F extends TimedFrame> {
           return;
         }
         this.seeking = false;
-        this.lastSeekMs = performance.now() - startedAt;
+        this.options.onSeek?.(performance.now() - startedAt);
         if (result.done) this.ended = true;
         else {
           if (this.current) this.options.release(this.current);

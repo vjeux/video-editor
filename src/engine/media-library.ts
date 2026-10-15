@@ -3,6 +3,7 @@ import {
   AudioBufferSink,
   BlobSource,
   CanvasSink,
+  EncodedPacketSink,
   Input,
   type InputAudioTrack,
   type InputVideoTrack,
@@ -22,6 +23,12 @@ interface VideoEntry {
   input: Input;
   video: InputVideoTrack;
   audio: InputAudioTrack | null;
+  /** Display size, so per-stream sinks need no async lookups. */
+  width: number;
+  height: number;
+  /** Keyframe times once indexed (null until then); seeks use them to avoid restarts. */
+  keyframes: number[] | null;
+  indexing: boolean;
 }
 interface AudioEntry {
   kind: "audio";
@@ -36,6 +43,11 @@ type Entry = VideoEntry | AudioEntry | ImageEntry;
 
 /** Longest edge of decoded preview frames; export decodes at full resolution. */
 const PREVIEW_MAX_EDGE = 1280;
+/**
+ * Canvases recycled per preview sink: the frame shown, the lookahead and
+ * pulls still in flight from a decoder a seek just replaced.
+ */
+const PREVIEW_POOL = 8;
 
 export class UnsupportedMediaError extends Error {}
 
@@ -46,7 +58,6 @@ async function playableTrack<T extends InputVideoTrack | InputAudioTrack>(track:
 /** Owns Mediabunny inputs and decoders for every imported file, keyed by asset id. */
 export class MediaLibrary {
   private entries = new Map<Id, Entry>();
-  private previewSinks = new Map<Id, CanvasSink>();
   private audioBuffers = new Map<Id, Promise<AudioBuffer | null>>();
 
   async load(id: Id, file: Blob): Promise<ProbeResult> {
@@ -70,11 +81,20 @@ export class MediaLibrary {
       ]);
       const duration = await input.computeDuration();
       if (video) {
-        this.entries.set(id, { kind: "video", input, video, audio });
         const [width, height] = await Promise.all([
           video.getDisplayWidth(),
           video.getDisplayHeight(),
         ]);
+        this.entries.set(id, {
+          kind: "video",
+          input,
+          video,
+          audio,
+          width,
+          height,
+          keyframes: null,
+          indexing: false,
+        });
         return { kind: "video", duration, width, height, hasAudio: !!audio };
       }
       if (audio) {
@@ -103,17 +123,47 @@ export class MediaLibrary {
     return entry?.kind === "video" ? entry.video : null;
   }
 
-  /** Shared preview-resolution sink; each consumer runs its own iterator over it. */
-  previewSink(id: Id): CanvasSink | null {
-    const cached = this.previewSinks.get(id);
-    if (cached) return cached;
-    const track = this.videoTrack(id);
-    if (!track) return null;
-    const landscape = track.displayWidth >= track.displayHeight;
-    const edge = Math.min(PREVIEW_MAX_EDGE, landscape ? track.displayWidth : track.displayHeight);
-    const sink = new CanvasSink(track, landscape ? { width: edge } : { height: edge });
-    this.previewSinks.set(id, sink);
-    return sink;
+  /**
+   * A preview-resolution sink for one frame stream. Its canvases are pooled
+   * and recycled in pull order, so a sink is never shared between streams.
+   */
+  createPreviewSink(id: Id): CanvasSink | null {
+    const entry = this.entries.get(id);
+    if (entry?.kind !== "video") return null;
+    this.indexKeyframes(entry);
+    const landscape = entry.width >= entry.height;
+    const edge = Math.min(PREVIEW_MAX_EDGE, landscape ? entry.width : entry.height);
+    return new CanvasSink(entry.video, {
+      ...(landscape ? { width: edge } : { height: edge }),
+      poolSize: PREVIEW_POOL,
+    });
+  }
+
+  /** Sorted keyframe times of a video, or null until they are indexed. */
+  keyframes(id: Id): number[] | null {
+    const entry = this.entries.get(id);
+    return entry?.kind === "video" ? entry.keyframes : null;
+  }
+
+  /** Walks the keyframe index once per file (metadata only: no packet data is read). */
+  private indexKeyframes(entry: VideoEntry) {
+    if (entry.indexing || entry.keyframes) return;
+    entry.indexing = true;
+    void (async () => {
+      const sink = new EncodedPacketSink(entry.video);
+      const times: number[] = [];
+      let packet = await sink.getFirstPacket({ metadataOnly: true });
+      if (packet && packet.type !== "key") {
+        packet = await sink.getNextKeyPacket(packet, { metadataOnly: true });
+      }
+      while (packet) {
+        times.push(packet.timestamp);
+        packet = await sink.getNextKeyPacket(packet, { metadataOnly: true });
+      }
+      entry.keyframes = times;
+    })().catch(() => {
+      // Without an index, seeking falls back to a distance rule.
+    });
   }
 
   /** Whole-file decode into one AudioBuffer, shared by playback, export and waveforms. */
@@ -168,7 +218,6 @@ export class MediaLibrary {
     if (entry?.kind === "image") entry.bitmap.close();
     else entry?.input.dispose();
     this.entries.delete(id);
-    this.previewSinks.delete(id);
     this.audioBuffers.delete(id);
   }
 }
