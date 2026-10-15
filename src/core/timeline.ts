@@ -1,4 +1,5 @@
 import { TRACK_ACCEPTS } from "./factories";
+import { rampSourceTime } from "./speed-ramps";
 import type { Clip, ClipKind, Id, IdFactory, MediaClip, Project, Seconds, Track } from "./types";
 
 /** Clip edges closer than this are considered touching (absorbs float error). */
@@ -40,13 +41,28 @@ export function clipsOnTrack(project: Project, trackId: Id): Clip[] {
 const rate = (clip: Clip) => (clip.type === "media" ? clip.speed : 0);
 
 /** Moves the clip's start edge, keeping its end fixed and its source in sync. */
+/**
+ * A ramped clip whose edges move is baked to the constant speed that covers
+ * the same source, so the cut stays seamless (the curve no longer fits).
+ */
+function bakeRamp(clip: MediaClip, start: Seconds, end: Seconds): MediaClip {
+  const offset = sourceTimeAt(clip, start);
+  const duration = end - start;
+  const speed = duration > 0 ? (sourceTimeAt(clip, end) - offset) / duration : clip.speed;
+  return { ...clip, start, duration, offset, speed, speedRamp: null };
+}
+
 function withStart(clip: Clip, start: Seconds): Clip {
+  if (clip.type === "media" && clip.speedRamp) return bakeRamp(clip, start, clipEnd(clip));
   const delta = start - clip.start;
   const moved = { ...clip, start, duration: clip.duration - delta };
   return moved.type === "media" ? { ...moved, offset: moved.offset + delta * rate(clip) } : moved;
 }
 
-const withEnd = (clip: Clip, end: Seconds): Clip => ({ ...clip, duration: end - clip.start });
+const withEnd = (clip: Clip, end: Seconds): Clip =>
+  clip.type === "media" && clip.speedRamp
+    ? bakeRamp(clip, clip.start, end)
+    : { ...clip, duration: end - clip.start };
 
 /** The half before a cut keeps how the clip enters; the half after keeps how it leaves. */
 const leftPart = (clip: Clip, at: Seconds): Clip => ({
@@ -237,7 +253,7 @@ export function snapCandidates(
 }
 
 export const sourceTimeAt = (clip: MediaClip, t: Seconds): Seconds =>
-  clip.offset + (t - clip.start) * clip.speed;
+  rampSourceTime(clip, t) ?? clip.offset + (t - clip.start) * clip.speed;
 
 /** Retimes a media clip over the same source span, bounded by its neighbours and source. */
 export function setClipSpeed(project: Project, id: Id, speed: number): Project {
