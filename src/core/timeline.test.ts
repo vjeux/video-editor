@@ -14,6 +14,7 @@ import {
 import {
   audibleClips,
   canPlace,
+  clipsOnTrack,
   insertGap,
   maxClipDuration,
   moveClip,
@@ -488,5 +489,17 @@ describe("caption word timings", () => {
       { text: "a", start: -1.5, end: -0.5 },
       { text: "b", start: 0.5, end: 1.5 },
     ]);
+  });
+});
+
+describe("clipsOnTrack memoisation", () => {
+  it("returns the same list for the same clips and a fresh one after an edit", () => {
+    const project = withClips(emptyProject(), videoClip("b", 4, 2), videoClip("a", 0, 4));
+    const first = clipsOnTrack(project, "V1");
+    expect(first.map((c) => c.id)).toEqual(["a", "b"]);
+    expect(clipsOnTrack({ ...project, name: "Renamed" }, "V1")).toBe(first);
+    const edited = withClips(project, videoClip("c", 6, 1));
+    expect(clipsOnTrack(edited, "V1").map((c) => c.id)).toEqual(["a", "b", "c"]);
+    expect(clipsOnTrack(project, "A1")).toEqual([]);
   });
 });
