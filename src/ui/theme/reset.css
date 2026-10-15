@@ -1,0 +1,91 @@
+/*
+ * Document-level rules StyleX cannot express (element and scrollbar selectors).
+ * Everything is wrapped in :where() so it has zero specificity and any StyleX
+ * class overrides it.
+ */
+:where(*, *::before, *::after) {
+  box-sizing: border-box;
+}
+:where(html, body, #root) {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+:where(body) {
+  background: #0e0f12;
+  color: #e6e8ee;
+  font:
+    13px/1.4 "Inter Variable",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  color-scheme: dark;
+}
+:where(button, input, textarea, select) {
+  font: inherit;
+  color: inherit;
+}
+:where(svg) {
+  display: block;
+  flex: none;
+}
+:where(:focus-visible) {
+  outline: 2px solid #7c6cff;
+  outline-offset: 1px;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #323743;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* View transitions (React <ViewTransition>): animate only what opts in. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+::view-transition-new(.dialog-enter):only-child {
+  animation: vt-dialog-in 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+::view-transition-old(.dialog-exit):only-child {
+  animation: vt-dialog-out 140ms ease-in forwards;
+}
+::view-transition-new(.fade-in):only-child {
+  animation: vt-fade-in 260ms ease-out;
+}
+::view-transition-old(.fade-out):only-child {
+  animation: vt-fade-out 200ms ease-in forwards;
+}
+@keyframes vt-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+@keyframes vt-dialog-out {
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}

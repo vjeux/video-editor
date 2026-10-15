@@ -1,40 +1,56 @@
 {
-  "name": "react",
-  "version": "1.0.0",
-  "description": "React example starter project",
-  "keywords": [
-    "react",
-    "starter"
-  ],
-  "main": "src/index.js",
+  "name": "video-editor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A browser-based non-linear video editor built on Mediabunny",
+  "type": "module",
+  "scripts": {
+    "dev": "vp dev",
+    "build": "tsc -b && vp build",
+    "test": "vp test",
+    "preview": "vp preview",
+    "prepare": "vp config"
+  },
   "dependencies": {
-    "@excalidraw/excalidraw": "^0.12.0",
-    "idb-keyval": "^6.2.0",
-    "react": "18.0.0",
-    "react-dom": "18.0.0",
-    "react-scripts": "^5.0.1",
-    "react-window": "^1.8.8",
-    "recoil": "^0.7.6"
+    "@codemirror/autocomplete": "^6.20.3",
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/language": "^6.13.1",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.14",
+    "@fontsource-variable/caveat": "^5.3.0",
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@fontsource-variable/playfair-display": "^5.3.0",
+    "@fontsource-variable/space-grotesk": "^5.3.0",
+    "@fontsource/bebas-neue": "^5.3.0",
+    "@lezer/highlight": "^1.2.5",
+    "@stylexjs/stylex": "^0.19.1",
+    "idb-keyval": "^6.3.0",
+    "mediabunny": "^1.61.4",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
-    "@babel/runtime": "7.13.8",
-    "@excalidraw/eslint-config": "^1.0.3",
-    "@excalidraw/prettier-config": "^1.0.2",
-    "eslint-config-prettier": "^8.5.0",
-    "eslint-plugin-prettier": "^4.2.1",
-    "prettier": "^2.7.1",
-    "typescript": "4.1.3"
+    "@babel/core": "^8.0.7",
+    "@rolldown/plugin-babel": "^0.2.4",
+    "@stylexjs/eslint-plugin": "^0.19.1",
+    "@stylexjs/unplugin": "^0.19.1",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "babel-plugin-react-compiler": "^1.0.0",
+    "typescript": "~6.0.2",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
   },
-  "scripts": {
-    "start": "react-scripts --openssl-legacy-provider start",
-    "build": "react-scripts build",
-    "test": "react-scripts test --env=jsdom",
-    "eject": "react-scripts eject"
-  },
-  "browserslist": [
-    ">0.2%",
-    "not dead",
-    "not ie <= 11",
-    "not op_mini all"
-  ]
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "12.11.2",
+      "onFail": "download"
+    }
+  }
 }
