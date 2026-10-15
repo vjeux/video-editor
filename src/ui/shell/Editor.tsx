@@ -12,12 +12,19 @@ import { installShortcuts } from "../../app/commands";
 import { sessionRestored, startAutosave } from "../../app/session";
 import { Inspector } from "../inspector/Inspector";
 import { LibraryPanel } from "../library/LibraryPanel";
+import { captionsStore, useCaptions } from "../../store/captions";
 import { ContextMenu } from "../menu/ContextMenu";
 import { TooltipLayer } from "./TooltipLayer";
 import { Drawer } from "./Drawer";
 import { DropOverlay } from "./DropOverlay";
 import { studioStore, useStudio } from "../../store/studio";
-import { EffectStudio, ExportDialog, preloadDialogs, ScriptDialog } from "./lazy-dialogs";
+import {
+  CaptionsDialog,
+  EffectStudio,
+  ExportDialog,
+  preloadDialogs,
+  ScriptDialog,
+} from "./lazy-dialogs";
 import { Notices } from "./Notices";
 import { TimelineSplitter } from "./TimelineSplitter";
 import { UnsupportedBanner } from "./UnsupportedBanner";
@@ -79,6 +86,7 @@ export function Editor() {
     setDrawer((open) => (open === panel ? null : panel));
   const dropping = useWindowFileDrop();
   const studioOpen = useStudio((s) => s.target !== null);
+  const captionsClip = useCaptions((s) => s.clipId);
 
   useEffect(() => {
     const stopAutosave = startAutosave();
@@ -176,6 +184,14 @@ export function Editor() {
         )}
         {/* The studio unmounts on close so its editor, timers and preview loop are released. */}
         {studioOpen && <EffectStudio onClose={() => studioStore.getState().close()} />}
+        {/* Unmounting cancels a running transcription. */}
+        {captionsClip && (
+          <CaptionsDialog
+            key={captionsClip}
+            clipId={captionsClip}
+            onClose={() => captionsStore.getState().close()}
+          />
+        )}
       </Suspense>
       {dropping && <DropOverlay />}
       {!SUPPORTED && <UnsupportedBanner />}

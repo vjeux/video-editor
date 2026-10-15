@@ -2,9 +2,11 @@ import { addTrack } from "../core/tracks";
 import { removeTrack } from "../core/tracks";
 import type { Id, TrackKind } from "../core/types";
 import { editorStore } from "../store";
+import { captionsStore } from "../store/captions";
 import { contextMenuStore, type MenuEntry } from "../store/context-menu";
 import { previousAdjacent } from "../core/effects";
 import { addAssetToTimeline, deleteAsset, freezeFrame } from "./assets";
+import { captionableClip } from "./captions";
 import { reportError } from "./errors";
 import { addAdjustmentLayer, applyTransition, findEffect } from "./effects";
 import {
@@ -106,6 +108,9 @@ export function clipMenu(clipId: Id, time: number): MenuEntry[] {
       disabled: locked || !previousAdjacent(project, clip) || !findEffect("crossfade"),
     }),
     item("Add adjustment layer", () => addAdjustmentLayer(), { icon: "layers" }),
+    ...(captionableClip(project, clipId)
+      ? [item("Generate captions…", () => captionsStore.getState().open(clipId), { icon: "text" })]
+      : []),
     item("Freeze frame at playhead", () => void freezeFrame().catch(reportError), {
       icon: "freeze",
       shortcut: "F",

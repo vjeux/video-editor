@@ -42,6 +42,11 @@ Built on [Mediabunny](https://mediabunny.dev/) + WebCodecs · React 19 · StyleX
 - **Audio effects.** Voice enhance, EQ, compressor, reverb, echo, bass boost,
   telephone, megaphone, muffled, pitch shift, robot, distortion, tremolo,
   filter, pan and gain. They're heard in playback and baked into the export.
+- **Auto-captions.** Right-click a clip with speech and choose "Generate
+  captions…": Whisper transcribes it on your device (WebGPU, or WASM where
+  that is missing) and each phrase becomes a timed title on a Captions track
+  in any caption look, with karaoke following every spoken word. The speech
+  model downloads once and is cached; no audio leaves the browser.
 - **Captions and titles.** Type straight onto the monitor: double-click a
   title (or press `Enter`) to edit it in place. Eight bundled fonts with
   weight, tracking, colour, a box and an outline, plus text looks: adjustable drop shadow, neon glow,
