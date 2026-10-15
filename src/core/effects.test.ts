@@ -81,8 +81,9 @@ describe("effect stacks", () => {
   });
 
   it("updates, reorders and removes stack entries", () => {
-    let project = addEffect(twoClips(), ["a"], blur, ids());
-    project = addEffect(project, ["a"], { ...blur, id: "glow" }, ids());
+    const next = ids();
+    let project = addEffect(twoClips(), ["a"], blur, next);
+    project = addEffect(project, ["a"], { ...blur, id: "glow" }, next);
     const [first, second] = project.clips.a!.effects;
     project = updateEffect(project, "a", first!.id, { enabled: false, params: { radius: 12 } });
     expect(project.clips.a!.effects[0]).toMatchObject({

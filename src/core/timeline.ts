@@ -48,6 +48,20 @@ function withStart(clip: Clip, start: Seconds): Clip {
 
 const withEnd = (clip: Clip, end: Seconds): Clip => ({ ...clip, duration: end - clip.start });
 
+/** The half before a cut keeps how the clip enters; the half after keeps how it leaves. */
+const leftPart = (clip: Clip, at: Seconds): Clip => ({
+  ...withEnd(clip, at),
+  fadeOut: 0,
+  animationOut: null,
+});
+const rightPart = (clip: Clip, at: Seconds, id: Id): Clip => ({
+  ...withStart(clip, at),
+  id,
+  fadeIn: 0,
+  animationIn: null,
+  transitionIn: null,
+});
+
 function setClips(project: Project, remove: readonly Id[], put: readonly Clip[]): Project {
   const clips = { ...project.clips };
   for (const id of remove) delete clips[id];
@@ -83,10 +97,7 @@ export function placeClip(project: Project, clip: Clip, newId: IdFactory): Proje
     } else if (coversTail) {
       put.push(withEnd(other, start));
     } else {
-      put.push(
-        { ...withEnd(other, start), fadeOut: 0 },
-        { ...withStart(other, end), id: newId(), fadeIn: 0 },
-      );
+      put.push(leftPart(other, start), rightPart(other, end, newId()));
     }
   }
   return setClips(project, removed, put);
@@ -135,8 +146,8 @@ export function trimClip(project: Project, id: Id, edge: "start" | "end", time: 
 export function splitClip(project: Project, id: Id, time: Seconds, newId: IdFactory): Project {
   const clip = findClip(project, id);
   if (time <= clip.start + EPSILON || time >= clipEnd(clip) - EPSILON) return project;
-  const left = { ...withEnd(clip, time), fadeOut: 0 };
-  const right = { ...withStart(clip, time), id: newId(), fadeIn: 0 };
+  const left = leftPart(clip, time);
+  const right = rightPart(clip, time, newId());
   return setClips(project, [], [left, right]);
 }
 
