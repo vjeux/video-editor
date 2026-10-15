@@ -13,6 +13,8 @@ export interface EditorState {
   selection: Id[];
   /** Clip whose incoming transition is selected (mutually exclusive with `selection`). */
   focusedTransition: Id | null;
+  /** Title being edited inline on the program monitor. */
+  editingText: Id | null;
   playhead: number;
   playing: boolean;
   pxPerSecond: number;
@@ -27,6 +29,8 @@ export interface EditorState {
   load: (project: Project) => void;
   select: (ids: Id[]) => void;
   focusTransition: (clipId: Id) => void;
+  /** Starts (or, with null, ends) inline editing of a title. */
+  editText: (clipId: Id | null) => void;
   setPlayhead: (t: number) => void;
   setPlaying: (playing: boolean) => void;
   setView: (
@@ -63,6 +67,7 @@ export function createEditorStore(initial: Project): EditorStore {
       coalesceKey: null,
       selection: [],
       focusedTransition: null,
+      editingText: null,
       playhead: 0,
       playing: false,
       pxPerSecond: 40,
@@ -116,6 +121,10 @@ export function createEditorStore(initial: Project): EditorStore {
 
       focusTransition(clipId) {
         set({ selection: [], focusedTransition: clipId, coalesceKey: null });
+      },
+
+      editText() {
+        throw new Error("Not implemented");
       },
 
       select(ids) {
