@@ -18,10 +18,12 @@ import {
   type Quality,
   type WrappedCanvas,
 } from "mediabunny";
+import { clipSpan, mixPreRoll, mixWindows } from "../core/audio-windows";
 import { layerClips, layersAt } from "../core/layers";
 import { audibleClips, frameSourceTime, projectDuration } from "../core/timeline";
 import type { Id, MediaClip, Project } from "../core/types";
 import { scheduleAudio } from "./audio-graph";
+import type { AudioReader, AudioSlice } from "./audio-reader";
 import { resolveEffect } from "../effects/resolve";
 import {
   fontFor,
@@ -64,8 +66,8 @@ const QUALITIES: Record<ExportQuality, Quality> = {
 
 const SAMPLE_RATE = 48_000;
 const CHANNELS = 2;
-/** Audio is muxed in step with video, one second at a time. */
-const AUDIO_CHUNK = 1;
+/** Seconds of sound mixed at a time, muxed in step with the video. */
+const MIX_WINDOW = 10;
 
 const even = (n: number) => Math.max(2, Math.round(n / 2) * 2);
 
@@ -120,37 +122,75 @@ class ExportFrames {
   }
 }
 
-async function mixdown(
+/**
+ * The timeline's sound, mixed window by window: each window renders in its
+ * own OfflineAudioContext from source read in order, pre-rolled by the
+ * longest effect tail so windows join seamlessly. Memory holds one window,
+ * not the whole mix. Calling `next()` early renders the next window while
+ * the caller is still busy with the last.
+ */
+export async function* mixdown(
   project: Project,
   media: MediaLibrary,
   duration: number,
-): Promise<AudioBuffer | null> {
-  const clips = audibleClips(project);
-  if (clips.length === 0) return null;
-  const decoded = new Map<Id, AudioBuffer | null>();
-  for (const clip of clips) decoded.set(clip.assetId, await media.audioBuffer(clip.assetId));
-  const ctx = new OfflineAudioContext({
-    numberOfChannels: CHANNELS,
-    length: Math.ceil(duration * SAMPLE_RATE),
-    sampleRate: SAMPLE_RATE,
-  });
-  scheduleAudio(ctx, ctx.destination, project, 0, 0, (id) => decoded.get(id) ?? null);
-  return ctx.startRendering();
+): AsyncGenerator<AudioBuffer, void> {
+  const readers = new Map<Id, AudioReader>();
+  const reader = (clip: MediaClip) => {
+    const found = readers.get(clip.id) ?? media.audioReader(clip.assetId);
+    if (found) readers.set(clip.id, found);
+    return found;
+  };
+  const windows = mixWindows(
+    Math.ceil(duration * SAMPLE_RATE),
+    MIX_WINDOW * SAMPLE_RATE,
+    Math.ceil(mixPreRoll(project) * SAMPLE_RATE),
+  );
+  try {
+    for (const window of windows) {
+      const from = window.renderStart / SAMPLE_RATE;
+      const to = window.end / SAMPLE_RATE;
+      const slices = new Map<Id, AudioSlice>();
+      await Promise.all(
+        audibleClips(project).map(async (clip) => {
+          const span = clipSpan(clip, from, to);
+          const slice = span && (await reader(clip)?.read(span.sourceFrom, span.sourceTo));
+          if (slice) slices.set(clip.id, slice);
+        }),
+      );
+      const ctx = new OfflineAudioContext({
+        numberOfChannels: CHANNELS,
+        length: window.end - window.renderStart,
+        sampleRate: SAMPLE_RATE,
+      });
+      scheduleAudio(
+        ctx,
+        ctx.destination,
+        project,
+        { from, when: 0 },
+        to,
+        (clip) => slices.get(clip.id) ?? null,
+      );
+      const mixed = await ctx.startRendering();
+      yield window.renderStart === window.start
+        ? mixed
+        : trim(mixed, window.start - window.renderStart);
+    }
+  } finally {
+    await Promise.all([...readers.values()].map((r) => r.dispose()));
+  }
 }
 
-function sliceAudio(buffer: AudioBuffer, from: number, to: number): AudioBuffer | null {
-  const start = Math.round(from * buffer.sampleRate);
-  const end = Math.min(buffer.length, Math.round(to * buffer.sampleRate));
-  if (end <= start) return null;
-  const slice = new AudioBuffer({
-    length: end - start,
+/** `buffer` without its first `samples` (the pre-roll). */
+function trim(buffer: AudioBuffer, samples: number): AudioBuffer {
+  const kept = new AudioBuffer({
+    length: buffer.length - samples,
     numberOfChannels: buffer.numberOfChannels,
     sampleRate: buffer.sampleRate,
   });
   for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
-    slice.copyToChannel(buffer.getChannelData(ch).subarray(start, end), ch);
+    kept.copyToChannel(buffer.getChannelData(ch).subarray(samples), ch);
   }
-  return slice;
+  return kept;
 }
 
 async function loadFonts(project: Project) {
@@ -217,10 +257,10 @@ export async function exportProject(
     return result;
   };
 
-  // Audio renders off the main thread while video starts; it is first needed
-  // at the first audio chunk.
-  const mixing = audibleClips(project).length > 0 ? mixdown(project, media, duration) : null;
-  const audioCodec = mixing
+  // Each window renders off the main thread while the frames before it encode.
+  const sound = audibleClips(project).length > 0 ? mixdown(project, media, duration) : null;
+  let mixing = sound?.next() ?? null;
+  const audioCodec = sound
     ? await getFirstEncodableAudioCodec(format.getSupportedAudioCodecs(), {
         numberOfChannels: CHANNELS,
         sampleRate: SAMPLE_RATE,
@@ -245,7 +285,6 @@ export async function exportProject(
     scratch: new ScratchCanvases(),
   };
   let audioWritten = 0;
-  let mix: AudioBuffer | null = null;
   let encoding: Promise<void> | null = null;
 
   try {
@@ -262,12 +301,12 @@ export async function exportProject(
       if (encoding) await timed("encode", encoding);
       encoding = video.add(t, 1 / fps);
 
-      while (audio && mixing && audioWritten <= t && audioWritten < duration) {
-        mix ??= await timed("mixdown", mixing);
-        if (!mix) break;
-        const chunk = sliceAudio(mix, audioWritten, Math.min(duration, audioWritten + AUDIO_CHUNK));
-        if (chunk) await audio.add(chunk);
-        audioWritten += AUDIO_CHUNK;
+      while (audio && sound && mixing && audioWritten <= t) {
+        const mix = await timed("mixdown", mixing);
+        mixing = mix.done ? null : sound.next();
+        if (mix.done) break;
+        await audio.add(mix.value);
+        audioWritten += mix.value.duration;
       }
       opts.onProgress((i + 1) / frameCount);
     }
@@ -282,7 +321,7 @@ export async function exportProject(
     await output.cancel();
     throw error;
   } finally {
-    await frames.dispose();
+    await Promise.all([frames.dispose(), sound?.return()]);
   }
 
   const buffer = output.target.buffer;

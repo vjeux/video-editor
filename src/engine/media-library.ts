@@ -61,7 +61,6 @@ async function playableTrack<T extends InputVideoTrack | InputAudioTrack>(track:
 /** Owns Mediabunny inputs and decoders for every imported file, keyed by asset id. */
 export class MediaLibrary {
   private entries = new Map<Id, Entry>();
-  private audioBuffers = new Map<Id, Promise<AudioBuffer | null>>();
 
   async load(id: Id, file: Blob): Promise<ProbeResult> {
     if (file.type.startsWith("image/")) {
@@ -216,18 +215,6 @@ export class MediaLibrary {
     return true;
   }
 
-  /** Whole-file decode into one AudioBuffer, shared by playback, export and waveforms. */
-  audioBuffer(id: Id): Promise<AudioBuffer | null> {
-    let pending = this.audioBuffers.get(id);
-    if (!pending) {
-      const entry = this.entries.get(id);
-      const track = entry && entry.kind !== "image" ? entry.audio : null;
-      pending = track ? decodeWholeTrack(track) : Promise.resolve(null);
-      this.audioBuffers.set(id, pending);
-    }
-    return pending;
-  }
-
   /** Small evenly spaced frames for bin posters and timeline filmstrips. */
   /** A full-resolution PNG of the frame shown at `time` (for freeze frames). */
   async stillAt(id: Id, time: number): Promise<Blob> {
@@ -268,33 +255,5 @@ export class MediaLibrary {
     if (entry?.kind === "image") entry.bitmap.close();
     else entry?.input.dispose();
     this.entries.delete(id);
-    this.audioBuffers.delete(id);
   }
-}
-
-async function decodeWholeTrack(track: InputAudioTrack): Promise<AudioBuffer> {
-  const [sampleRate, channels] = await Promise.all([
-    track.getSampleRate(),
-    track.getNumberOfChannels(),
-  ]);
-  const chunks: { buffer: AudioBuffer; timestamp: number }[] = [];
-  for await (const { buffer, timestamp } of new AudioBufferSink(track).buffers()) {
-    chunks.push({ buffer, timestamp });
-  }
-  const end = chunks.reduce(
-    (max, c) => Math.max(max, Math.round(c.timestamp * sampleRate) + c.buffer.length),
-    0,
-  );
-  const whole = new AudioBuffer({
-    length: Math.max(1, end),
-    numberOfChannels: channels,
-    sampleRate,
-  });
-  for (const { buffer, timestamp } of chunks) {
-    const at = Math.max(0, Math.round(timestamp * sampleRate));
-    for (let ch = 0; ch < channels; ch++) {
-      whole.copyToChannel(buffer.getChannelData(Math.min(ch, buffer.numberOfChannels - 1)), ch, at);
-    }
-  }
-  return whole;
 }
