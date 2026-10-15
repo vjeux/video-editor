@@ -29,9 +29,10 @@ describe("addTrack", () => {
 
 describe("trackFor", () => {
   it("reuses the first unlocked compatible track", () => {
-    const { project, trackId } = trackFor(emptyProject(), "image", () => "new");
+    const base = emptyProject();
+    const { project, trackId } = trackFor(base, "image", () => "new");
     expect(trackId).toBe("V1");
-    expect(project).toBe(project);
+    expect(project).toBe(base);
   });
 
   it("creates a track when none fits", () => {
