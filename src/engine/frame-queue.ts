@@ -9,7 +9,7 @@ export interface FrameQueueOptions<F extends TimedFrame> {
   open: (start: number) => AsyncIterator<F, void>;
   /** Called exactly once for every frame the queue received and no longer needs. */
   release: (frame: F) => void;
-  /** A frame arrived: the caller should render again. */
+  /** A seek landed or a due frame arrived: the caller should render again. */
   onFrame: () => void;
   /** The last keyframe at or before `t` in source time, or null while unknown. */
   keyframeAtOrBefore: (t: number) => number | null;
@@ -201,7 +201,8 @@ export class FrameQueue<F extends TimedFrame> {
           }
           this.buffer.push(result.value);
           this.trimStale();
-          this.options.onFrame();
+          // Lookahead frames wait for their time; only one already due needs a render.
+          if (result.value.timestamp <= this.target + EPSILON) this.options.onFrame();
         }
       } catch {
         // A decoder that fails stops here; the next seek starts a fresh one.
