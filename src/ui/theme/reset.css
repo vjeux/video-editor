@@ -12,8 +12,8 @@
   overflow: hidden;
 }
 :where(body) {
-  background: #0e0f12;
-  color: #e6e8ee;
+  background: inherit;
+  color: inherit;
   font:
     13px/1.4 "Inter Variable",
     -apple-system,
@@ -22,11 +22,14 @@
     sans-serif;
   -webkit-font-smoothing: antialiased;
   user-select: none;
-  color-scheme: dark;
 }
 :where(button, input, textarea, select) {
   font: inherit;
   color: inherit;
+}
+:where(input::placeholder, textarea::placeholder) {
+  color: currentColor;
+  opacity: 0.55;
 }
 :where(svg) {
   display: block;
@@ -42,7 +45,7 @@
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #323743;
+  background: color-mix(in srgb, currentColor 22%, transparent);
   border-radius: 10px;
   border: 2px solid transparent;
   background-clip: padding-box;
@@ -88,5 +91,16 @@
 @keyframes vt-fade-out {
   to {
     opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

@@ -3,13 +3,14 @@ import { useStore } from "zustand";
 
 export interface Notice {
   id: number;
-  tone: "error" | "info";
+  tone: "error" | "info" | "success";
   message: string;
+  description?: string;
 }
 
 interface NoticeState {
   notices: Notice[];
-  push: (tone: Notice["tone"], message: string) => void;
+  push: (tone: Notice["tone"], message: string, description?: string) => void;
   dismiss: (id: number) => void;
 }
 
@@ -17,8 +18,8 @@ let next = 0;
 
 export const noticeStore = createStore<NoticeState>()((set) => ({
   notices: [],
-  push: (tone, message) =>
-    set((s) => ({ notices: [...s.notices, { id: ++next, tone, message }].slice(-4) })),
+  push: (tone, message, description) =>
+    set((s) => ({ notices: [...s.notices, { id: ++next, tone, message, description }].slice(-4) })),
   dismiss: (id) => set((s) => ({ notices: s.notices.filter((n) => n.id !== id) })),
 }));
 

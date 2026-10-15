@@ -1,29 +1,32 @@
 import * as stylex from "@stylexjs/stylex";
-import { colors, motion, radii } from "../theme/tokens.stylex";
+import { colors, motion, radii, sizes } from "../theme/tokens.stylex";
 import { Icon } from "./Icon";
 import type { IconName } from "./icon-paths";
 
 const styles = stylex.create({
   base: {
-    width: 30,
-    height: 30,
+    width: sizes.control,
+    height: sizes.control,
     flexShrink: 0,
     padding: 0,
     borderRadius: radii.md,
-    borderWidth: 0,
+    borderWidth: "1px",
+    borderStyle: "solid",
+    borderColor: "transparent",
     display: "grid",
     placeItems: "center",
     cursor: { default: "pointer", ":disabled": "default" },
     opacity: { default: 1, ":disabled": 0.4 },
     color: { default: colors.muted, ":hover:not(:disabled)": colors.text },
     backgroundColor: { default: "transparent", ":hover:not(:disabled)": colors.panel2 },
-    transform: { default: "none", ":active:not(:disabled)": "scale(0.94)" },
+    transform: { default: "none", ":active:not(:disabled)": "translateY(1px)" },
     transitionProperty: "background-color, color, transform",
     transitionDuration: motion.fast,
     transitionTimingFunction: motion.ease,
   },
   small: { width: 24, height: 24 },
   on: {
+    borderColor: colors.accentRing,
     color: { default: colors.accent2, ":hover:not(:disabled)": colors.accent2 },
     backgroundColor: { default: colors.accentSoft, ":hover:not(:disabled)": colors.accentSoft },
   },

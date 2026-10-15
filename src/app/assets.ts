@@ -166,6 +166,7 @@ export async function freezeFrame(duration = 1.5, zoom = true) {
       ...createMediaClip(asset, { id: stillId, trackId: clip.trackId, start: playhead }),
       duration,
       transform: clip.transform,
+      appearance: clip.appearance,
     };
     const placed = placeClip(opened, still, newId);
     const push = BUILTIN_EFFECTS["punch-zoom"];

@@ -88,6 +88,74 @@ interface ClipBase {
   animationLoop: ClipAnimation | null;
 }
 
+export interface FrameInsets {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+export interface MaskPoint {
+  x: number;
+  y: number;
+}
+export type MediaBlendMode =
+  | "normal"
+  | "multiply"
+  | "screen"
+  | "overlay"
+  | "darken"
+  | "lighten"
+  | "soft-light"
+  | "hard-light"
+  | "difference"
+  | "exclusion";
+export interface FrameShadow {
+  color: string;
+  blur: number;
+  x: number;
+  y: number;
+}
+export interface FrameFill {
+  type: "solid" | "linear";
+  color: string;
+  color2: string;
+  angle: number;
+}
+export interface FrameBorder {
+  color: string;
+  width: number;
+  style: "solid" | "dashed" | "dotted" | "double" | "gradient";
+  color2: string;
+  angle: number;
+}
+
+/** Frame styling in project pixels, before the clip's scale and rotation. */
+export interface MediaAppearance {
+  radius: number;
+  background: FrameFill | null;
+  /** Insets within the frame; linked is an editing preference. */
+  padding: FrameInsets & { linked: boolean };
+  /** Fractions removed from each source edge; opposing sides must total < 1. */
+  crop: FrameInsets;
+  /** Null follows the cropped source aspect. Circle masks always use a square frame. */
+  aspect: number | null;
+  fit: "contain" | "cover";
+  /** Alignment in the padded frame, 0–1 on each axis. */
+  position: MaskPoint;
+  mask: {
+    shape: "rectangle" | "circle" | "ellipse" | "diamond" | "hexagon" | "custom";
+    points: readonly MaskPoint[];
+  };
+  feather: number;
+  blendMode: MediaBlendMode;
+  /** Drawn inside the frame so the clip's dimensions stay unchanged. */
+  border: FrameBorder | null;
+  /** An outer frame shadow; offsets follow the clip's rotation. */
+  shadow: FrameShadow | null;
+  innerShadow: FrameShadow | null;
+  glow: { color: string; blur: number } | null;
+}
+
 export interface MediaClip extends ClipBase {
   type: "media";
   assetId: Id;
@@ -99,6 +167,7 @@ export interface MediaClip extends ClipBase {
   speedRamp: string | null;
   /** Web Audio effect chain applied to the clip's sound, in order. */
   audioEffects: readonly EffectInstance[];
+  appearance: MediaAppearance;
 }
 
 export type TextAnimation = "none" | "fade" | "rise" | "type" | "blur";

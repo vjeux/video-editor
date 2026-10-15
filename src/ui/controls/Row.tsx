@@ -5,12 +5,12 @@ import { colors } from "../theme/tokens.stylex";
 const styles = stylex.create({
   row: {
     display: "grid",
-    gridTemplateColumns: "78px minmax(0, 1fr) 58px",
+    gridTemplateColumns: "70px minmax(0, 1fr) 72px",
     alignItems: "center",
     gap: 8,
     marginBottom: { default: 9, ":last-child": 0 },
   },
-  wide: { gridTemplateColumns: "78px minmax(0, 1fr)" },
+  wide: { gridTemplateColumns: "70px minmax(0, 1fr)" },
   label: { color: colors.muted, fontSize: 12 },
 });
 

@@ -35,7 +35,8 @@ export function OutlineRow({ clip }: { clip: TextClip }) {
             <ColorInput
               label="Outline colour"
               value={stroke.color}
-              onChange={(color) => set({ ...stroke, color }, `stroke-color:${clip.id}`)}
+              allowAlpha
+              onChange={(color, key) => set({ ...stroke, color }, key)}
             />
             <div {...stylex.props(styles.width)}>
               <NumberField

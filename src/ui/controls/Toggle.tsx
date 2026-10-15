@@ -5,12 +5,12 @@ const styles = stylex.create({
   track: {
     position: "relative",
     flexShrink: 0,
-    width: 30,
-    height: 18,
+    width: 32,
+    height: 20,
     padding: 0,
     borderWidth: 0,
     borderRadius: radii.pill,
-    backgroundColor: { default: colors.line2, ":hover": "#3c4250" },
+    backgroundColor: { default: colors.line2, ":hover": colors.raisedHover },
     boxShadow: "inset 0 1px 2px rgba(0, 0, 0, 0.35)",
     cursor: "pointer",
     transitionProperty: "background-color, box-shadow",
@@ -25,11 +25,10 @@ const styles = stylex.create({
     position: "absolute",
     top: 2,
     left: 2,
-    width: 14,
-    height: 14,
+    width: 16,
+    height: 16,
     borderRadius: "50%",
     backgroundColor: "#fff",
-    backgroundImage: "linear-gradient(180deg, #fff, #e9eaf0)",
     boxShadow: shadows.thumb,
     transitionProperty: "transform",
     transitionDuration: motion.base,
@@ -54,6 +53,7 @@ export function Toggle({
       aria-checked={on}
       aria-label={label}
       onClick={() => onChange(!on)}
+      onKeyDown={(e) => e.stopPropagation()}
       {...stylex.props(styles.track, on && styles.trackOn)}
     >
       <span {...stylex.props(styles.knob, on && styles.knobOn)} />

@@ -7,6 +7,7 @@ import { Segmented } from "../controls/Segmented";
 import { SliderRow } from "../controls/SliderRow";
 import { colors } from "../theme/tokens.stylex";
 import { AnimationGroup } from "./AnimationGroup";
+import { AppearanceGroup } from "./AppearanceGroup";
 import { AudioEffectsGroup } from "./AudioEffectsGroup";
 import { CaptionsGroup } from "./CaptionsGroup";
 import { SilenceGroup } from "./SilenceGroup";
@@ -32,6 +33,7 @@ export function MediaInspector({ clip }: { clip: MediaClip }) {
   return (
     <>
       {kind !== "audio" && <TransformGroup clip={clip} />}
+      {kind !== "audio" && <AppearanceGroup clip={clip} />}
       {hasAudio && (
         <Group title="Audio">
           <SliderRow

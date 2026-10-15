@@ -21,6 +21,7 @@ import { freezeFrame } from "./assets";
 import { newId } from "./engine";
 import { reportError } from "./errors";
 import { pause, seek, togglePlay } from "./playback";
+import { saveProjectFile } from "./project-files";
 
 const state = () => editorStore.getState();
 
@@ -173,10 +174,24 @@ const isEditable = (target: EventTarget | null) =>
 const modalOpen = () =>
   [...document.querySelectorAll('[aria-modal="true"]')].some((el) => el.checkVisibility());
 
-export function installShortcuts(): () => void {
+export function installShortcuts(onHelp?: () => void): () => void {
   const onKey = (event: KeyboardEvent) => {
-    if (isEditable(event.target) || modalOpen()) return;
-    const run = SHORTCUTS[shortcutKey(event)];
+    if (event.defaultPrevented || modalOpen()) return;
+    const key = shortcutKey(event);
+    // Project commands also work while renaming; ordinary typing still owns edit keys.
+    if (key === "Mod+KeyS" || key === "Mod+KeyO") {
+      event.preventDefault();
+      if (key === "Mod+KeyS") void saveProjectFile().catch(reportError);
+      else document.getElementById("open-project-files")?.click();
+      return;
+    }
+    if (isEditable(event.target)) return;
+    if (event.key === "?" && onHelp) {
+      event.preventDefault();
+      onHelp();
+      return;
+    }
+    const run = SHORTCUTS[key];
     if (!run) return;
     event.preventDefault();
     run();

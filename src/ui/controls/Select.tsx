@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
-import { colors, sizes } from "../theme/tokens.stylex";
+import { colors, motion, sizes } from "../theme/tokens.stylex";
 import { Icon } from "./Icon";
 import { ListRow } from "./ListRow";
 import type { Rect } from "./placement";
@@ -68,7 +68,8 @@ const styles = stylex.create({
   },
   placeholder: { color: colors.faint },
   font: (family: string) => ({ fontFamily: `"${family}", system-ui, sans-serif` }),
-  chevron: { color: colors.faint, flexShrink: 0 },
+  chevron: { color: colors.muted, flexShrink: 0, transition: `transform ${motion.fast}` },
+  chevronOpen: { transform: "rotate(180deg)" },
   list: { maxHeight: 340, overflowY: "auto", overscrollBehavior: "contain" },
   header: {
     paddingTop: 8,
@@ -206,7 +207,7 @@ export function Select<V extends string>({
         >
           {current?.label ?? placeholder}
         </span>
-        <span {...stylex.props(styles.chevron)}>
+        <span {...stylex.props(styles.chevron, anchor !== null && styles.chevronOpen)}>
           <Icon name="chevronDown" size={13} strokeWidth={2.2} />
         </span>
       </button>

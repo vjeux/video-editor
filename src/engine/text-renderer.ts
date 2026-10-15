@@ -120,6 +120,61 @@ function placeUnits(ctx: Ctx2D, clip: TextClip, layout: TextLayout): PlacedUnit[
   });
 }
 
+/**
+ * Selection bounds around the settled title, including ink overhang and styling.
+ * Keep these separate from layout: expanding a selection must not move the text,
+ * its background, or the inline editor. Symmetric bounds preserve the transform pivot.
+ */
+export function textBounds(ctx: Ctx2D, clip: TextClip): { width: number; height: number } {
+  const layout = layoutText(ctx, clip);
+  const { style } = clip;
+  const fs = style.fontSize;
+  let halfWidth = layout.width / 2;
+  let halfHeight = layout.height / 2;
+  const include = (left: number, top: number, right: number, bottom: number) => {
+    halfWidth = Math.max(halfWidth, -left, right);
+    halfHeight = Math.max(halfHeight, -top, bottom);
+  };
+
+  ctx.save();
+  applyFont(ctx, clip);
+  for (const unit of placeUnits(ctx, clip, layout)) {
+    // Measure the exact units that drawText paints. Measuring only the full line
+    // misses overhangs introduced by separately drawn words or letters.
+    const m = ctx.measureText(unit.text);
+    const x = unit.cx - unit.width / 2;
+    const outline = style.stroke?.width ?? 0;
+    const left = x - m.actualBoundingBoxLeft - outline;
+    const right = x + m.actualBoundingBoxRight + outline;
+    const top = unit.cy - m.actualBoundingBoxAscent - outline;
+    const bottom = unit.cy + m.actualBoundingBoxDescent + outline;
+    include(left, top, right, bottom);
+
+    if (style.shadow) {
+      const { blur, x: dx, y: dy } = style.shadow;
+      const spread = fs * blur * 1.5;
+      include(
+        left + fs * dx - spread,
+        top + fs * dy - spread,
+        right + fs * dx + spread,
+        bottom + fs * dy + spread,
+      );
+    }
+    if (style.glow) {
+      const spread = fs * style.glow.size * 1.5;
+      include(left - spread, top - spread, right + spread, bottom + spread);
+    }
+    if (style.highlight?.mode === "word" || clip.karaoke?.mode === "box") {
+      const pad = fs * (style.highlight?.padding || 0.12);
+      const height = layout.lineHeight * 0.92 + fs * (style.highlight?.padding ?? 0);
+      include(x - pad, unit.cy - height / 2, x + unit.width + pad, unit.cy + height / 2);
+    }
+  }
+  ctx.restore();
+  // Leave one project pixel for antialiasing at the outer edge.
+  return { width: Math.ceil(halfWidth + 1) * 2, height: Math.ceil(halfHeight + 1) * 2 };
+}
+
 const roundBox = (ctx: Ctx2D, x: number, y: number, w: number, h: number, r: number) => {
   ctx.beginPath();
   ctx.roundRect(x, y, w, h, r);

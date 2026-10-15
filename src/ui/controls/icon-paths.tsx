@@ -4,6 +4,25 @@ const stroke = (children: ReactNode) => ({ fill: "none", stroke: "currentColor",
 const solid = (children: ReactNode) => ({ fill: "currentColor", stroke: "none", children });
 
 export const ICONS = {
+  menu: stroke(<path d="M4 6h16M4 12h16M4 18h16" />),
+  save: stroke(
+    <>
+      <path d="M5 3h12l4 4v14H3V3zM7 3v6h10V3M7 21v-8h10v8" />
+    </>,
+  ),
+  help: stroke(
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.5 9a2.5 2.5 0 115 0c0 2-2.5 2-2.5 4M12 17h.01" />
+    </>,
+  ),
+  theme: stroke(
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 3v18" />
+      <path d="M12 3a9 9 0 010 18z" fill="currentColor" />
+    </>,
+  ),
   play: solid(<path d="M7 4l13 8-13 8z" />),
   pause: solid(<path d="M6 4h4v16H6zM14 4h4v16h-4z" />),
   start: solid(<path d="M6 5h2v14H6zM20 5v14L9 12z" />),

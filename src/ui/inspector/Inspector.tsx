@@ -60,7 +60,7 @@ export function Inspector() {
 
   return (
     <aside aria-label="Inspector" {...stylex.props(styles.root)}>
-      <PanelHeader title={title}>
+      <PanelHeader title={title} icon="panelRight">
         {(count > 0 || transitionId) && (
           <IconButton
             icon="trash"
