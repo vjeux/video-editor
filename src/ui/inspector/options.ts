@@ -24,7 +24,6 @@ export const WEIGHTS = [
 
 export const COLORS = ["#ffffff", "#f6d27a", "#a99dff", "#5fe0b7", "#ff6c8a", "#111111"] as const;
 export const SPEEDS = [0.25, 0.5, 1, 1.5, 2, 4] as const;
-export const FRAME_RATES = [24, 25, 30, 50, 60] as const;
 export const BACKGROUNDS = ["#000000", "#ffffff", "#0e0f12", "#1d1735", "#12261f"] as const;
 
 export const ANIMATIONS: readonly { value: TextAnimation; label: string }[] = [

@@ -13,13 +13,36 @@ export function frameIndex(t: Seconds, fps: number): number {
   return Math.floor(t * fps + EPSILON);
 }
 
-export function formatTimecode(t: Seconds, fps: number): string {
+/** NTSC rates (29.97, 59.94) whose timecode drops frame numbers to track the clock. */
+const isDropFrameRate = (fps: number) =>
+  Math.abs(fps - 30000 / 1001) < 1e-3 || Math.abs(fps - 60000 / 1001) < 1e-3;
+
+/** SMPTE drop-frame: skips the first frame numbers of each minute except every tenth. */
+function dropFrameNumber(frames: number, fps: number): number {
+  const dropped = Math.round(fps * 0.066666);
+  const perTenMinutes = Math.round(fps * 600);
+  const perMinute = Math.round(fps) * 60 - dropped;
+  const tens = Math.floor(frames / perTenMinutes);
+  const rest = frames % perTenMinutes;
+  const minutes = rest > dropped ? Math.floor((rest - dropped) / perMinute) : 0;
+  return frames + dropped * 9 * tens + dropped * minutes;
+}
+
+/**
+ * hh:mm:ss:ff counting whole frames at `fps`, labelled by the nominal rate
+ * (frames 0–23 at 23.976). 29.97 and 59.94 use drop-frame (`;`) by default.
+ */
+export function formatTimecode(t: Seconds, fps: number, dropFrame = isDropFrameRate(fps)): string {
+  const nominal = Math.round(fps);
   const frames = frameIndex(Math.max(0, t), fps);
-  const seconds = Math.floor(frames / fps);
+  const labelled = dropFrame ? dropFrameNumber(frames, fps) : frames;
+  const seconds = Math.floor(labelled / nominal);
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
-  return `${pad(h)}:${pad(m)}:${pad(s)}:${pad(frames % fps)}`;
+  const digits = Math.max(2, String(nominal - 1).length);
+  const ff = String(labelled % nominal).padStart(digits, "0");
+  return `${pad(h)}:${pad(m)}:${pad(s)}${dropFrame ? ";" : ":"}${ff}`;
 }
 
 export function formatDuration(t: Seconds): string {
@@ -33,6 +56,5 @@ export function formatDuration(t: Seconds): string {
 /** The start of the frame on screen at `t`. */
 export const frameStart = (t: Seconds, fps: number): Seconds => frameIndex(t, fps) / fps;
 
-export function formatFps(_fps: number): string {
-  throw new Error("Not implemented");
-}
+/** "29.97", "23.976", "60": up to three decimals, trailing zeros trimmed. */
+export const formatFps = (fps: number): string => String(Number(fps.toFixed(3)));

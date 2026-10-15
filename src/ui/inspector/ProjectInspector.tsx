@@ -4,12 +4,13 @@ import { useEditor } from "../../store";
 import { Field } from "../controls/Field";
 import { NumberField } from "../controls/NumberField";
 import { Row } from "../controls/Row";
-import { Segmented } from "../controls/Segmented";
 import { Select } from "../controls/Select";
 import { FORMAT_PRESETS } from "../formats";
 import { ColorSwatches } from "./ColorSwatches";
 import { Group } from "./Group";
-import { BACKGROUNDS, FRAME_RATES } from "./options";
+import { FRAME_RATES } from "../../core/frame-rates";
+import { formatFps } from "../../core/time";
+import { BACKGROUNDS } from "./options";
 import { ShortcutList } from "./ShortcutList";
 
 const styles = stylex.create({
@@ -65,10 +66,11 @@ export function ProjectInspector() {
           />
         </Row>
         <Row label="Frame rate" wide>
-          <Segmented
+          <Select
             label="Frame rate"
             value={String(settings.fps)}
-            options={FRAME_RATES.map((f) => ({ value: String(f), label: f }))}
+            placeholder={`${formatFps(settings.fps)} fps`}
+            options={FRAME_RATES.map((r) => ({ value: String(r.value), label: `${r.label} fps` }))}
             onChange={(fps) => setSettings({ fps: Number(fps) })}
           />
         </Row>

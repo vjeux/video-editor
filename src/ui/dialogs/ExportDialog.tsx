@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { startTransition, Suspense, useActionState, useRef, useState } from "react";
 import { media } from "../../app/engine";
 import { reportError } from "../../app/errors";
-import { formatTimecode } from "../../core/time";
+import { formatFps, formatTimecode } from "../../core/time";
 import { projectDuration } from "../../core/timeline";
 import {
   exportFileName,
@@ -153,7 +153,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
         items={[
           { label: "Duration", value: formatTimecode(duration, settings.fps) },
           { label: "Resolution", value: `${width(height)}×${height}` },
-          { label: "Frame rate", value: `${settings.fps} fps` },
+          { label: "Frame rate", value: `${formatFps(settings.fps)} fps` },
         ]}
       />
       {result.kind === "done" ? (
