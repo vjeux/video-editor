@@ -30,6 +30,5 @@ export function formatDuration(t: Seconds): string {
   return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
 
-export function frameStart(_t: Seconds, _fps: number): Seconds {
-  throw new Error("Not implemented");
-}
+/** The start of the frame on screen at `t`. */
+export const frameStart = (t: Seconds, fps: number): Seconds => frameIndex(t, fps) / fps;

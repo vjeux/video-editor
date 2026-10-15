@@ -1,5 +1,6 @@
 import { audibleClips } from "../core/timeline";
 import type { Id, Project } from "../core/types";
+import { audibleContextTime } from "./audio-clock";
 import { scheduleAudio, stopAll } from "./audio-graph";
 import type { MediaLibrary } from "./media-library";
 
@@ -17,6 +18,8 @@ export class Player {
   private master: GainNode | null = null;
   private nodes: AudioScheduledSourceNode[] = [];
   private anchor: { ctxTime: number; time: number } | null = null;
+  /** The last time reported, so the clock is monotonic within one anchor. */
+  private lastTime = 0;
   private buffers = new Map<Id, AudioBuffer | null>();
   private project: Project | null = null;
   private volume = 1;
@@ -44,15 +47,32 @@ export class Player {
     if (this.master) this.master.gain.value = volume;
   }
 
+  /**
+   * Where playback is in what you hear: follows the audio output (so video
+   * stays in sync over Bluetooth latency) and never steps backwards.
+   */
   time(): number {
-    if (!this.anchor || !this.ctx) return 0;
-    return this.anchor.time + Math.max(0, this.ctx.currentTime - this.anchor.ctxTime);
+    const { anchor, ctx } = this;
+    if (!anchor || !ctx) return 0;
+    const output = ctx.getOutputTimestamp?.();
+    const audible = audibleContextTime({
+      output:
+        output?.contextTime !== undefined && output.performanceTime !== undefined
+          ? { contextTime: output.contextTime, performanceTime: output.performanceTime }
+          : null,
+      currentTime: ctx.currentTime,
+      latency: ctx.outputLatency ?? ctx.baseLatency ?? 0,
+      nowMs: performance.now(),
+    });
+    this.lastTime = Math.max(this.lastTime, anchor.time + Math.max(0, audible - anchor.ctxTime));
+    return this.lastTime;
   }
 
   play(project: Project, from: number) {
     const { ctx } = this.context();
     void ctx.resume();
     this.anchor = { ctxTime: ctx.currentTime + START_LATENCY, time: from };
+    this.lastTime = from;
     this.schedule(project);
   }
 
@@ -74,6 +94,7 @@ export class Player {
     const time = this.time();
     stopAll(this.nodes);
     this.anchor = { ctxTime: this.context().ctx.currentTime + START_LATENCY, time };
+    this.lastTime = time;
     this.schedule(project);
   }
 
