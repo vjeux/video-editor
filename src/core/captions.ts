@@ -1,5 +1,5 @@
 import { createTextClip } from "./factories";
-import { placeClip, sourceTimeAt } from "./timeline";
+import { placeClip, timelineTimeOf } from "./timeline";
 import { addTrack } from "./tracks";
 import type {
   Id,
@@ -197,30 +197,6 @@ export function chunkCaptions(
       },
     ];
   });
-}
-
-const BISECTION_STEPS = 40;
-
-/**
- * The timeline time at which `clip` plays source time `sourceTime`: the
- * inverse of its speed (and ramp) mapping; null outside its source range.
- */
-export function timelineTimeOf(clip: MediaClip, sourceTime: Seconds): Seconds | null {
-  const end = clip.start + clip.duration;
-  const from = sourceTimeAt(clip, clip.start);
-  const to = sourceTimeAt(clip, end);
-  const eps = 1e-9;
-  if (sourceTime < from - eps || sourceTime > to + eps) return null;
-  if (!clip.speedRamp) return clean(clip.start + (sourceTime - clip.offset) / clip.speed);
-  // Ramps are monotonic, so bisection finds the moment that source plays.
-  let lo = clip.start;
-  let hi = end;
-  for (let i = 0; i < BISECTION_STEPS; i++) {
-    const mid = (lo + hi) / 2;
-    if (sourceTimeAt(clip, mid) < sourceTime) lo = mid;
-    else hi = mid;
-  }
-  return (lo + hi) / 2;
 }
 
 /** Places a clip's source-time words on the timeline, dropping those outside the clip. */

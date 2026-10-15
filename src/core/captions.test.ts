@@ -4,7 +4,6 @@ import {
   chunkCaptions,
   cleanWords,
   mergeWindows,
-  timelineTimeOf,
   transcriptionWindows,
   wordsOnTimeline,
   type CaptionOptions,
@@ -18,7 +17,7 @@ import {
   withClips,
 } from "./fixtures.test-utils";
 import { migrateProject } from "./migrate";
-import { sourceTimeAt } from "./timeline";
+import { sourceTimeAt, timelineTimeOf } from "./timeline";
 import type { MediaClip, TextClip, TimedWord } from "./types";
 
 const w = (text: string, start: number, end: number): TimedWord => ({ text, start, end });
