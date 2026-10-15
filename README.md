@@ -77,7 +77,10 @@ Built on [Mediabunny](https://mediabunny.dev/) + WebCodecs · React 19 · StyleX
   8×, velocity speed ramps, freeze frames (`F`) and fade in/out.
 - **Export** to MP4 (H.264/AAC) or WebM (VP9/Opus) at any resolution. You get
   progress with an ETA, cancel, and an in-app preview, and the export can keep
-  running in the background.
+  running in the background. In Chrome and Edge you pick where to save first
+  and the video streams straight into that file as it encodes, so its length
+  is bounded by your disk, not memory; other browsers build it in memory and
+  offer a download.
 - **Scriptable.** Edit the timeline with JavaScript in a syntax-highlighted
   editor with API autocompletion. A whole script is one undo step.
 - **Marker import** from chapter lists, CSV/TSV, SRT/WebVTT subtitles and

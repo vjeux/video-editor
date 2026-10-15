@@ -1,6 +1,7 @@
 import {
   AudioBufferSource,
   BufferTarget,
+  StreamTarget,
   canEncodeVideo,
   CanvasSink,
   CanvasSource,
@@ -16,6 +17,8 @@ import {
   type InputVideoTrack,
   type OutputFormat,
   type Quality,
+  type StreamTargetChunk,
+  type Target,
   type WrappedCanvas,
 } from "mediabunny";
 import { clipSpan, mixPreRoll, mixWindows } from "../core/audio-windows";
@@ -47,14 +50,32 @@ export interface ExportOptions {
   height: number;
   signal: AbortSignal;
   onProgress: (progress: number) => void;
+  /**
+   * A file to stream the export into as it encodes, so its size is bounded
+   * by the disk rather than memory. Without one the export is built in
+   * memory and returned as a Blob.
+   */
+  destination?: FileSystemFileHandle | null;
 }
 
-export const EXPORT_FORMATS: Record<ExportFormat, { label: string; create(): OutputFormat }> = {
+export type ExportResult = { kind: "file"; size: number } | { kind: "blob"; blob: Blob };
+
+export const EXPORT_FORMATS: Record<
+  ExportFormat,
+  { label: string; mimeType: string; create(streaming: boolean): OutputFormat }
+> = {
   mp4: {
     label: "MP4 · H.264 / AAC",
-    create: () => new Mp4OutputFormat({ fastStart: "in-memory" }),
+    mimeType: "video/mp4",
+    // Streamed files put their index at the end (written last, nothing held
+    // back); in-memory ones lead with it so they start playing sooner.
+    create: (streaming) => new Mp4OutputFormat({ fastStart: streaming ? false : "in-memory" }),
   },
-  webm: { label: "WebM · VP9 / Opus", create: () => new WebMOutputFormat() },
+  webm: {
+    label: "WebM · VP9 / Opus",
+    mimeType: "video/webm",
+    create: () => new WebMOutputFormat(),
+  },
 };
 
 const QUALITIES: Record<ExportQuality, Quality> = {
@@ -193,6 +214,22 @@ function trim(buffer: AudioBuffer, samples: number): AudioBuffer {
   return kept;
 }
 
+/**
+ * Writes into the chosen file. The file only replaces what was there when
+ * the export finishes: a failed or canceled export is discarded, not left
+ * half-written.
+ */
+async function fileTarget(handle: FileSystemFileHandle) {
+  const file = await handle.createWritable();
+  let failed = false;
+  const writable = new WritableStream<StreamTargetChunk>({
+    write: (chunk) => file.write(chunk),
+    close: () => (failed ? file.abort() : file.close()),
+    abort: (reason) => file.abort(reason),
+  });
+  return { target: new StreamTarget(writable, { chunked: true }), fail: () => (failed = true) };
+}
+
 async function loadFonts(project: Project) {
   const fonts = new Set(
     Object.values(project.clips).flatMap((clip) => (clip.type === "text" ? [fontFor(clip)] : [])),
@@ -204,15 +241,17 @@ export async function exportProject(
   project: Project,
   media: MediaLibrary,
   opts: ExportOptions,
-): Promise<Blob> {
+): Promise<ExportResult> {
   const duration = projectDuration(project);
   if (duration <= 0) throw new Error("The timeline is empty");
   const { fps } = project.settings;
   const height = even(opts.height);
   const width = even((project.settings.width / project.settings.height) * height);
 
-  const format = EXPORT_FORMATS[opts.format].create();
-  const output = new Output({ format, target: new BufferTarget() });
+  const file = opts.destination ? await fileTarget(opts.destination) : null;
+  const target: Target = file?.target ?? new BufferTarget();
+  const format = EXPORT_FORMATS[opts.format].create(file !== null);
+  const output = new Output({ format, target });
   const canvas = new OffscreenCanvas(width, height);
   const ctx = canvas.getContext("2d", { alpha: false });
   if (!ctx) throw new Error("Could not create a 2D canvas for export");
@@ -318,15 +357,17 @@ export async function exportProject(
       seconds: (performance.now() - startedAt) / 1000,
     };
   } catch (error) {
+    file?.fail();
     await output.cancel();
     throw error;
   } finally {
     await Promise.all([frames.dispose(), sound?.return()]);
   }
 
-  const buffer = output.target.buffer;
+  if (opts.destination) return { kind: "file", size: (await opts.destination.getFile()).size };
+  const buffer = target instanceof BufferTarget ? target.buffer : null;
   if (!buffer) throw new Error("Export produced no data");
-  return new Blob([buffer], { type: format.mimeType });
+  return { kind: "blob", blob: new Blob([buffer], { type: format.mimeType }) };
 }
 
 let encodable: Promise<Record<ExportFormat, boolean>> | null = null;
@@ -335,7 +376,7 @@ let encodable: Promise<Record<ExportFormat, boolean>> | null = null;
 export function encodableFormats(): Promise<Record<ExportFormat, boolean>> {
   encodable ??= Promise.all(
     (Object.keys(EXPORT_FORMATS) as ExportFormat[]).map(async (key) => {
-      const format = EXPORT_FORMATS[key].create();
+      const format = EXPORT_FORMATS[key].create(false);
       const codec = await getFirstEncodableVideoCodec(format.getSupportedVideoCodecs(), {
         width: 1920,
         height: 1080,
