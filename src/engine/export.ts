@@ -1,6 +1,7 @@
 import {
   AudioBufferSource,
   BufferTarget,
+  canEncodeVideo,
   CanvasSink,
   CanvasSource,
   getFirstEncodableAudioCodec,
@@ -29,6 +30,7 @@ import {
   type Drawable,
   type RenderServices,
 } from "./compositor";
+import { avcCodecString } from "./codec-string";
 import { perf, type ExportStats } from "./perf";
 import { createGpu } from "./gpu";
 import type { MediaLibrary } from "./media-library";
@@ -182,8 +184,16 @@ export async function exportProject(
   });
   if (!videoCodec)
     throw new Error(`This browser cannot encode video for ${opts.format.toUpperCase()}`);
+  // H.264's level must cover the frame rate too (1080p60 is 4.2, not 4.0);
+  // use it when this browser can encode it, else Mediabunny's own choice.
+  const avc = videoCodec === "avc" ? avcCodecString(width, height, fps) : null;
+  const fullCodecString =
+    avc && (await canEncodeVideo("avc", { width, height, frameRate: fps, fullCodecString: avc }))
+      ? avc
+      : undefined;
   const video = new CanvasSource(canvas, {
     codec: videoCodec,
+    ...(fullCodecString && { fullCodecString }),
     quality: QUALITIES[opts.quality],
     hardwareAcceleration: "prefer-hardware",
     onEncoderConfig: (config) => (stats.codec = config.codec),
