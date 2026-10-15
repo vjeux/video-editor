@@ -12,8 +12,11 @@
     "prepare": "vp config"
   },
   "dependencies": {
+    "idb-keyval": "^6.3.0",
+    "mediabunny": "^1.61.4",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@babel/core": "^8.0.7",
