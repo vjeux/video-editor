@@ -28,11 +28,21 @@ Built on [Mediabunny](https://mediabunny.dev/) + WebCodecs · React 19 · StyleX
 - **Direct manipulation.** In the viewer, move, scale and rotate layers on the
   canvas with snapping to the centre and edges. Right-click anything for a
   context menu.
-- **Titles that move.** Choose from six bundled fonts, with weight, tracking,
-  colour, a background box and alignment. Animations are fade, rise, typewriter
-  and blur.
+- **Effects, transitions and animations.** 76 GPU effects and 26 transitions
+  built in, including the looks short-form editors lean on: punch-in and
+  bouncy zooms, impact shake, flash, glitch, RGB split, light leaks and film
+  burn. Stack effects per clip, filter everything below with adjustment
+  layers, and give any clip In, Out and Loop animations.
+- **Write your own effects.** The Effect Studio compiles GLSL live, with inline
+  errors and parameters generated from your shader. You can also import
+  gl-transitions shaders, `.cube` LUTs and effect packs.
+- **Audio effects.** Voice enhance, EQ, compressor, reverb, echo, bass boost,
+  telephone, megaphone, muffled, pitch shift, robot, distortion, tremolo,
+  filter, pan and gain. They're heard in playback and baked into the export.
+- **Captions and titles.** Eight bundled fonts with weight, tracking, colour,
+  a box, an outline, and one-click Bold, Highlight and Gaming caption looks.
 - **Clip controls.** Transform, opacity, volume up to 200%, speed from 0.1× to
-  8×, and fade in/out.
+  8×, velocity speed ramps, freeze frames (`F`) and fade in/out.
 - **Export** to MP4 (H.264/AAC) or WebM (VP9/Opus) at any resolution. You get
   progress with an ETA, cancel, and an in-app preview, and the export can keep
   running in the background.
@@ -40,6 +50,69 @@ Built on [Mediabunny](https://mediabunny.dev/) + WebCodecs · React 19 · StyleX
   editor with API autocompletion. A whole script is one undo step.
 - **Marker import** from chapter lists, CSV/TSV, SRT/WebVTT subtitles and
   LiveSplit `.lss` splits.
+
+## Effects, transitions and animations
+
+![Cutline with the Effects library open: GPU thumbnails, a clip's effect stack in the inspector, transition badges on the cuts and an adjustment layer](docs/screenshot-effects.jpg)
+
+The choice of built-ins comes from looking at what popular editing styles rely
+on: MrBeast/Hormozi-style YouTube, CapCut "velocity" edits and stream/podcast
+clippers. Snappy zooms, flash and glitch cuts, impact shakes, speed ramps,
+freeze-and-zoom and bold outlined captions come up again and again.
+
+| Kind             | Built in                                                                                                                                                                                                                            |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Color (14)       | Brightness/contrast, exposure, saturation + vibrance, hue, temperature/tint, lift/gamma/gain, B&W, sepia, invert, duotone, posterize, threshold, fade, colour isolate                                                               |
+| Motion (4)       | Punch zoom (snap, bounce, slow push), zoom pulse, impact shake, Ken Burns                                                                                                                                                           |
+| Blur (5)         | Gaussian, zoom, motion, tilt-shift, sharpen                                                                                                                                                                                         |
+| Stylize (20)     | Vignette, grain, chromatic aberration, glow, pixelate, halftone, edges, emboss, toon, CRT, VHS, glitch, old film, night vision, thermal, kaleidoscope, letterbox, dither, light leak, flash                                         |
+| Distort (7)      | Bulge, swirl, wave, ripple, mirror, shake, lens                                                                                                                                                                                     |
+| Transitions (26) | Crossfade, fade through black/white, wipe, push, cover, zoom, zoom punch, zoom blur, iris, clock, diamond, dissolve, pixelate, whip, glitch, RGB split, flash, light leak, film burn, spin, ripple, swirl, luma wipe, doorway, cube |
+| Animations       | **In/Out:** fade, slides, zoom in/out, pop, spin, drop, rise, elastic, bounce, shake, flicker, plus wipe/iris/blur/pixelate/glitch/dissolve reveals. **Loop:** pulse, breathe, float, wiggle, heartbeat, sway, spin                 |
+| Speed ramps      | Velocity, montage, hero time, bullet, jump cut, flash in/out                                                                                                                                                                        |
+
+- **Adding them:** drag an effect onto a clip, or a transition onto a cut,
+  from the library panel. You can also double-click a tile or use the
+  inspector.
+- **Where transitions live:** a transition belongs to the cut. It only plays
+  while the two clips touch, extends each clip half its duration past the
+  cut, and holds on the edge frame when there's no extra footage.
+- **Adjustment layers** filter everything composited below them.
+
+## Write your own effects
+
+![The Effect Studio editing a light-leak shader with live preview and generated parameters](docs/screenshot-studio.png)
+
+Effects and transitions are GLSL ES 3.00 fragments. Your code is compiled
+inside a host that provides the inputs and clocks:
+
+```glsl
+// @name Soft Glow
+// @category Light
+uniform float amount;  // = 0.6, min: 0, max: 2, label: Glow amount
+uniform vec3 tint;     // = vec3(1.0, 0.8, 0.6)   → colour picker
+
+vec4 effect(vec2 uv) {             // transitions: vec4 transition(vec2 uv)
+  vec4 c = getColor(uv);           // getFromColor / getToColor for transitions
+  return vec4(c.rgb + amount * 0.2 * tint * progress, c.a);
+}
+```
+
+The host provides `progress` (0 → 1 across the clip or transition), `time`
+(seconds), `ratio`, `resolution` and `applyLut(rgb)`. Every `uniform` with a
+`// = default` comment becomes a slider, toggle, colour or vector in the UI.
+
+You can import, by dragging onto the window or through the library's Import
+button:
+
+| File                      | Becomes                                                                                    |
+| ------------------------- | ------------------------------------------------------------------------------------------ |
+| `.glsl` / `.frag` / `.fs` | An effect or transition. [gl-transitions](https://gl-transitions.com) files work unchanged |
+| `.cube`                   | A colour-grading LUT effect with an intensity control                                      |
+| `.json`                   | An effect pack exported from Cutline (parameters are re-derived from the source)           |
+
+Imported and custom effects must compile before they're added, and they're
+saved inside the project.
 
 ## Quick start
 
@@ -69,6 +142,7 @@ A pre-commit hook runs `vp check --fix` on staged files.
 | --------------------------- | --------------------- |
 | Play / pause                | `Space`               |
 | Step one frame / one second | `←` `→` / `⇧←` `⇧→`   |
+| Freeze frame at playhead    | `F`                   |
 | Go to start / end           | `Home` / `End`        |
 | Split at playhead           | `S` or `⌘B`           |
 | Delete / ripple delete      | `⌫` / `⇧⌫`            |
@@ -132,13 +206,14 @@ ui ──► app ──► store ──► core
           └──► engine ──► core
 ```
 
-| Layer        | Responsibility                                                                                                                                                                                                                                                                                                                                     |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/core`   | Pure TypeScript. Holds the project model and every edit (overwrite placement, move, trim, split, ripple, speed, paste), snapping, fades and title animation, timecode, scripting and annotation parsing. Unit-tested without a browser.                                                                                                            |
-| `src/engine` | The Mediabunny and Web API adapter. `MediaLibrary` probes files, holds preview sinks, decodes audio and makes thumbnails. `FrameStream` serves frames for scrubbing and sequential playback. One compositor serves preview and export, and one audio scheduler serves playback and the mixdown. Also holds the exporter and IndexedDB persistence. |
-| `src/store`  | Zustand stores. The editor store owns the project behind a single `commit()` writer with undo/redo; continuous gestures coalesce into one step.                                                                                                                                                                                                    |
-| `src/app`    | Commands that combine store and engine: import, the playback loop, keyboard and context-menu actions, session restore and autosave, and the single error-reporting seam.                                                                                                                                                                           |
-| `src/ui`     | React 19 with the React Compiler, one component per file, styled with StyleX (tokens in `ui/theme/tokens.stylex.ts`). Uses `use()` + Suspense for session restore and codec probing, `useActionState` for export and scripts, `<Activity>` for dialogs that keep their state, and `<ViewTransition>` for animated dialogs.                         |
+| Layer         | Responsibility                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/core`    | Pure TypeScript. Holds the project model and every edit (overwrite placement, move, trim, split, ripple, speed, ramps, paste), effect stacks, transitions, In/Out/Loop animations, the audio-effect catalog, shader metadata and `.cube` parsing, versioned migrations, timecode, scripting and annotation parsing. Unit-tested without a browser.                                                                                                                                                             |
+| `src/effects` | The built-in shader library, written in the same uniform-comment format users import, plus effect lookup.                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/engine`  | The Mediabunny and Web API adapter. `MediaLibrary` probes files, holds preview sinks, decodes audio and makes thumbnails. `FrameStream` serves frames for scrubbing and sequential playback. One compositor serves preview and export: `GpuEffects` runs effect chains, transitions and LUTs on WebGL2, and adjustment layers filter what's below them. One audio scheduler, with each clip's Web Audio effect chain, serves both playback and the mixdown. Also holds the exporter and IndexedDB persistence. |
+| `src/store`   | Zustand stores. The editor store owns the project behind a single `commit()` writer with undo/redo; continuous gestures coalesce into one step.                                                                                                                                                                                                                                                                                                                                                                |
+| `src/app`     | Commands that combine store and engine: import, the playback loop, keyboard and context-menu actions, session restore and autosave, and the single error-reporting seam.                                                                                                                                                                                                                                                                                                                                       |
+| `src/ui`      | React 19 with the React Compiler, one component per file, styled with StyleX (tokens in `ui/theme/tokens.stylex.ts`). Uses `use()` + Suspense for session restore and codec probing, `useActionState` for export and scripts, `<Activity>` for dialogs that keep their state, and `<ViewTransition>` for animated dialogs.                                                                                                                                                                                     |
 
 Some design choices worth knowing:
 
