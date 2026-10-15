@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ParamDef, ParamValue } from "../../core/types";
-import { colors, radii } from "../theme/tokens.stylex";
+import { ColorInput } from "./ColorInput";
 import { Field } from "./Field";
 import { NumberField } from "./NumberField";
 import { Row } from "./Row";
@@ -9,17 +9,6 @@ import { Toggle } from "./Toggle";
 
 const styles = stylex.create({
   pair: { display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 6 },
-  color: {
-    width: "100%",
-    height: 26,
-    padding: 0,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderStyle: "solid",
-    borderColor: colors.line,
-    backgroundColor: colors.bg,
-    cursor: "pointer",
-  },
 });
 
 const precisionFor = (def: ParamDef) => {
@@ -52,12 +41,11 @@ export function ParamControl({
   if (def.type === "color") {
     return (
       <Row label={def.label} wide>
-        <input
-          type="color"
-          aria-label={def.label}
+        <ColorInput
+          showValue
+          label={def.label}
           value={typeof current === "string" ? current : "#000000"}
-          onChange={(e) => onChange(e.target.value, `param:${def.key}`)}
-          {...stylex.props(styles.color)}
+          onChange={(color) => onChange(color, `param:${def.key}`)}
         />
       </Row>
     );
@@ -101,6 +89,7 @@ export function ParamControl({
       max={max}
       step={def.step ?? (def.type === "int" ? 1 : undefined)}
       precision={precisionFor(def)}
+      defaultValue={typeof def.default === "number" ? def.default : undefined}
       onChange={(v, coalesce) => onChange(def.type === "int" ? Math.round(v) : v, coalesce)}
     />
   );

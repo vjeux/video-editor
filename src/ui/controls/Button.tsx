@@ -1,34 +1,37 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
-import { colors, radii } from "../theme/tokens.stylex";
+import { colors, sizes } from "../theme/tokens.stylex";
+import { surfaces } from "./surfaces";
 
 const styles = stylex.create({
   base: {
-    height: 30,
+    height: sizes.control,
     paddingBlock: 0,
     paddingInline: 12,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderStyle: "solid",
-    borderColor: colors.line2,
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
+    fontSize: 12.5,
+    fontWeight: 500,
     whiteSpace: "nowrap",
     textDecoration: "none",
-    color: colors.text,
-    backgroundColor: { default: "transparent", ":hover:not(:disabled)": colors.panel2 },
     cursor: { default: "pointer", ":disabled": "default" },
-    opacity: { default: 1, ":disabled": 0.4 },
+    opacity: { default: 1, ":disabled": 0.45 },
   },
   primary: {
-    borderColor: "transparent",
+    borderColor: "rgba(255, 255, 255, 0.08)",
     color: "#fff",
-    fontWeight: 550,
+    fontWeight: 600,
     backgroundColor: { default: colors.accent, ":hover:not(:disabled)": colors.accentHover },
+    backgroundImage: "linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0))",
+    boxShadow:
+      "inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 14px rgba(124, 108, 255, 0.28)",
   },
-  danger: { color: colors.danger },
+  danger: {
+    color: { default: colors.danger, ":hover:not(:disabled)": "#ff8590" },
+    backgroundColor: { default: colors.raised, ":hover:not(:disabled)": colors.dangerSoft },
+  },
 });
 
 type Variant = "default" | "primary" | "danger";
@@ -54,6 +57,7 @@ export function Button({
   download,
 }: Props) {
   const props = stylex.props(
+    surfaces.raised,
     styles.base,
     variant === "primary" && styles.primary,
     variant === "danger" && styles.danger,
