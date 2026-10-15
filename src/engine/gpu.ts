@@ -35,6 +35,9 @@ void main() {
   gl_Position = vec4(position, 0.0, 1.0);
 }`;
 
+/** Compiled programs kept per GPU context; editing a shader produces a new one per version. */
+const PROGRAM_CACHE_LIMIT = 96;
+
 const RESERVED_DECLARATION = /^\s*uniform\s+\w+\s+(progress|ratio|time|resolution)\s*;.*$/gm;
 
 /** The host-side contract every effect and transition source is compiled into. */
@@ -72,6 +75,7 @@ void main() { cutlineColor = clamp(${entry}(vUv), 0.0, 1.0); }`;
 /** Turns `ERROR: 0:12: 'foo' : undeclared identifier` lines into structured errors. */
 function parseLog(log: string): ShaderError[] {
   const errors = log
+    .replaceAll("\0", "")
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean)
@@ -203,11 +207,24 @@ export class GpuEffects {
     if (cached) return cached;
     try {
       const program = this.compile(def);
-      this.programs.set(key, program);
+      this.remember(key, program);
       return program;
     } catch (error) {
-      if (error instanceof ShaderCompileError) this.programs.set(key, error);
+      if (error instanceof ShaderCompileError) this.remember(key, error);
       throw error;
+    }
+  }
+
+  /** Caches a compile result, evicting (and freeing) the oldest beyond the limit. */
+  private remember(key: string, result: Program | ShaderCompileError) {
+    this.programs.set(key, result);
+    for (const [oldKey, old] of this.programs) {
+      if (this.programs.size <= PROGRAM_CACHE_LIMIT) break;
+      if (!(old instanceof ShaderCompileError)) {
+        this.gl.deleteProgram(old.program);
+        if (old.lut) this.gl.deleteTexture(old.lut);
+      }
+      this.programs.delete(oldKey);
     }
   }
 

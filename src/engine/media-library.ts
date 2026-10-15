@@ -129,6 +129,23 @@ export class MediaLibrary {
   }
 
   /** Small evenly spaced frames for bin posters and timeline filmstrips. */
+  /** A full-resolution PNG of the frame shown at `time` (for freeze frames). */
+  async stillAt(id: Id, time: number): Promise<Blob> {
+    const track = this.videoTrack(id);
+    if (!track) throw new Error("Freeze frames need a video clip");
+    const frame = await new CanvasSink(track).getCanvas(time);
+    if (!frame) throw new Error("No frame at this time");
+    const { canvas } = frame;
+    return canvas instanceof OffscreenCanvas
+      ? canvas.convertToBlob({ type: "image/png" })
+      : new Promise<Blob>((resolve, reject) =>
+          canvas.toBlob(
+            (blob) => (blob ? resolve(blob) : reject(new Error("Could not encode the frame"))),
+            "image/png",
+          ),
+        );
+  }
+
   async thumbnails(id: Id, times: number[], height: number): Promise<ImageBitmap[]> {
     const image = this.image(id);
     if (image) {

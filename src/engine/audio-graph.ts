@@ -1,6 +1,11 @@
 import { gainAt } from "../core/animation";
-import { audibleClips, clipEnd } from "../core/timeline";
+import { rampSpeedAt } from "../core/speed-ramps";
+import { audibleClips, clipEnd, sourceTimeAt } from "../core/timeline";
 import type { Id, MediaClip, Project } from "../core/types";
+import { buildAudioChain } from "./audio-effects";
+
+/** Samples per speed-ramp playback-rate curve. */
+const RAMP_SAMPLES = 64;
 
 export type AudioBuffers = (assetId: Id) => AudioBuffer | null;
 
@@ -23,9 +28,9 @@ export function scheduleAudio(
   from: number,
   when: number,
   buffers: AudioBuffers,
-): AudioBufferSourceNode[] {
+): AudioScheduledSourceNode[] {
   const at = (t: number) => when + (t - from);
-  const nodes: AudioBufferSourceNode[] = [];
+  const nodes: AudioScheduledSourceNode[] = [];
 
   for (const clip of audibleClips(project)) {
     const buffer = buffers(clip.assetId);
@@ -42,19 +47,38 @@ export function scheduleAudio(
 
     const source = ctx.createBufferSource();
     source.buffer = buffer;
-    source.playbackRate.value = clip.speed;
-    source.connect(gain);
-    source.start(
-      at(begin),
-      clip.offset + (begin - clip.start) * clip.speed,
-      (end - begin) * clip.speed,
-    );
+    if (clip.speedRamp) {
+      const curve = Float32Array.from({ length: RAMP_SAMPLES }, (_, i) =>
+        rampSpeedAt(clip, begin + ((end - begin) * i) / (RAMP_SAMPLES - 1)),
+      );
+      source.playbackRate.setValueCurveAtTime(curve, at(begin), end - begin);
+    } else {
+      source.playbackRate.value = clip.speed;
+    }
+
+    // source → audio effect stack → volume/fades → destination
+    const chain = buildAudioChain(ctx, clip.audioEffects, { start: at(begin), stop: at(end) });
+    if (chain) {
+      source.connect(chain.input);
+      chain.output.connect(gain);
+      for (const node of chain.scheduled) {
+        node.stop(at(end) + TAIL);
+        nodes.push(node);
+      }
+    } else {
+      source.connect(gain);
+    }
+    const offset = sourceTimeAt(clip, begin);
+    source.start(at(begin), offset, sourceTimeAt(clip, end) - offset);
     nodes.push(source);
   }
   return nodes;
 }
 
-export function stopAll(nodes: AudioBufferSourceNode[]) {
+/** Modulators keep running briefly after a clip so reverb/echo tails aren't chopped. */
+const TAIL = 3;
+
+export function stopAll(nodes: AudioScheduledSourceNode[]) {
   for (const node of nodes) {
     node.stop();
     node.disconnect();

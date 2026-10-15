@@ -112,7 +112,19 @@ function drawText(ctx: Ctx2D, clip: TextClip, t: number) {
     const shown = line.slice(0, Math.max(0, remaining));
     remaining -= line.length + 1;
     const y = -layout.height / 2 + layout.padding + layout.lineHeight * (i + 0.5);
-    if (shown) ctx.fillText(shown, x, y);
+    if (!shown) return;
+    if (style.stroke) {
+      // Stroke first at twice the width so the fill covers its inner half.
+      ctx.save();
+      ctx.shadowColor = "transparent";
+      ctx.lineJoin = "round";
+      ctx.miterLimit = 2;
+      ctx.lineWidth = style.stroke.width * 2;
+      ctx.strokeStyle = style.stroke.color;
+      ctx.strokeText(shown, x, y);
+      ctx.restore();
+    }
+    ctx.fillText(shown, x, y);
   });
 }
 
