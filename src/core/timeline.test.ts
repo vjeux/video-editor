@@ -16,6 +16,7 @@ import {
   canPlace,
   maxClipDuration,
   moveClip,
+  moveClips,
   placeClip,
   projectDuration,
   removeAsset,
@@ -372,5 +373,39 @@ describe("setClipSpeed", () => {
     const base = withClips(emptyProject(), videoClip("a", 0, 4), videoClip("b", 6, 2));
     const project = setClipSpeed(base, "a", 0.5);
     expect(mediaClip(project, "a")).toMatchObject({ speed: 0.5, duration: 6 });
+  });
+});
+
+describe("moveClips", () => {
+  it("shifts a group without the moved clips overwriting each other", () => {
+    const base = withClips(
+      emptyProject(),
+      videoClip("a", 0, 4),
+      videoClip("b", 4, 4),
+      videoClip("c", 12, 2),
+    );
+    const project = moveClips(
+      base,
+      [
+        { id: "a", start: 2, trackId: "V1" },
+        { id: "b", start: 6, trackId: "V1" },
+      ],
+      ids(),
+    );
+    expect(clipsOn(project, "V1")).toEqual([
+      { id: "a", start: 2, duration: 4 },
+      { id: "b", start: 6, duration: 4 },
+      { id: "c", start: 12, duration: 2 },
+    ]);
+  });
+
+  it("overwrites clips that are not part of the move", () => {
+    const base = withClips(emptyProject(), videoClip("a", 0, 2), videoClip("b", 5, 4));
+    const project = moveClips(base, [{ id: "a", start: 6, trackId: "V1" }], ids());
+    expect(clipsOn(project, "V1")).toEqual([
+      { id: "b", start: 5, duration: 1 },
+      { id: "a", start: 6, duration: 2 },
+      { id: "new-1", start: 8, duration: 1 },
+    ]);
   });
 });

@@ -238,3 +238,11 @@ export function setClipSpeed(project: Project, id: Id, speed: number): Project {
   const retimed = { ...clip, speed, duration: 1 / project.settings.fps };
   return trimClip(setClips(project, [], [retimed]), id, "end", clip.start + desired);
 }
+
+export const moveClips = (
+  _project: Project,
+  _moves: readonly { id: Id; start: Seconds; trackId: Id }[],
+  _newId: IdFactory,
+): Project => {
+  throw new Error("not implemented");
+};
