@@ -74,7 +74,7 @@ describe("clipSpan", () => {
 describe("mixPreRoll", () => {
   const withEffects = (effects: MediaClip["audioEffects"]) =>
     withClips(emptyProject(), {
-      ...createMediaClip(audioAsset, { id: "a", trackId: "a1", start: 0 }),
+      ...createMediaClip(audioAsset, { id: "a", trackId: "A1", start: 0 }),
       audioEffects: effects,
     });
 

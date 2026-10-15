@@ -36,19 +36,60 @@ export function levelEnvelope(
   sampleRate: number,
   frame: Seconds,
 ): Float32Array {
-  const length = channels[0]?.length ?? 0;
-  const size = Math.max(1, Math.round(sampleRate * frame));
-  return Float32Array.from({ length: Math.ceil(length / size) }, (_, f) => {
-    const from = f * size;
-    const to = Math.min(length, from + size);
-    let sum = 0;
-    for (let i = from; i < to; i++) {
-      const mixed = channels.reduce((acc, ch) => acc + (ch[i] ?? 0), 0) / channels.length;
-      sum += mixed * mixed;
+  const stream = new LevelStream(sampleRate, frame);
+  stream.add(channels, 0);
+  return stream.levels();
+}
+
+/**
+ * The level envelope built chunk by chunk as audio decodes, so a long
+ * recording never has to sit in memory whole.
+ */
+export class LevelStream {
+  private readonly size: number;
+  private sums = new Float64Array(1024);
+  private counts = new Uint32Array(1024);
+  private length = 0;
+
+  constructor(sampleRate: number, frame: Seconds) {
+    this.size = Math.max(1, Math.round(sampleRate * frame));
+  }
+
+  /** `channels` hold the same number of samples, the first at sample `at`. */
+  add(channels: readonly Float32Array[], at: number): void {
+    const samples = channels[0]?.length ?? 0;
+    if (samples === 0) return;
+    this.grow(Math.floor((at + samples - 1) / this.size) + 1);
+    const { sums, counts, size } = this;
+    for (let i = 0; i < samples; i++) {
+      let mixed = 0;
+      for (const channel of channels) mixed += channel[i] ?? 0;
+      mixed /= channels.length;
+      const f = ((at + i) / size) | 0;
+      sums[f]! += mixed * mixed;
+      counts[f]!++;
     }
-    const rms = Math.sqrt(sum / Math.max(1, to - from));
-    return rms > 0 ? Math.max(FLOOR_DB, 20 * Math.log10(rms)) : FLOOR_DB;
-  });
+  }
+
+  levels(): Float32Array {
+    return Float32Array.from({ length: this.length }, (_, f) => {
+      const rms = Math.sqrt(this.sums[f]! / Math.max(1, this.counts[f]!));
+      return rms > 0 ? Math.max(FLOOR_DB, 20 * Math.log10(rms)) : FLOOR_DB;
+    });
+  }
+
+  private grow(length: number) {
+    if (length > this.sums.length) {
+      const capacity = Math.max(length, this.sums.length * 2);
+      const sums = new Float64Array(capacity);
+      const counts = new Uint32Array(capacity);
+      sums.set(this.sums);
+      counts.set(this.counts);
+      this.sums = sums;
+      this.counts = counts;
+    }
+    this.length = Math.max(this.length, length);
+  }
 }
 
 /**
@@ -141,18 +182,4 @@ export function suggestThreshold(levels: Float32Array): number {
   const speech = at(0.9);
   const threshold = Math.round(noise + (speech - noise) * THRESHOLD_POSITION);
   return Math.min(THRESHOLD_RANGE[1], Math.max(THRESHOLD_RANGE[0], threshold));
-}
-
-export class LevelStream {
-  constructor(_sampleRate: number, _frame: Seconds) {
-    throw new Error("Not implemented");
-  }
-
-  add(_channels: readonly Float32Array[], _at: number): void {
-    throw new Error("Not implemented");
-  }
-
-  levels(): Float32Array {
-    throw new Error("Not implemented");
-  }
 }
