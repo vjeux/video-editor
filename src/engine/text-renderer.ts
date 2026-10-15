@@ -1,4 +1,4 @@
-import { textAnimationState } from "../core/animation";
+import { textAnimationState, type TextAnimationState } from "../core/animation";
 import {
   GLYPH_IDENTITY,
   karaokeAt,
@@ -16,6 +16,8 @@ const BOX_RADIUS = 0.18;
 const KARAOKE_POP = 0.14;
 /** Width of the shine band as a fraction of the title width. */
 const SHINE_WIDTH = 0.22;
+/** A title at rest: fully shown, no motion. */
+const AT_REST: TextAnimationState = { opacity: 1, offsetY: 0, blur: 0, visibleChars: Infinity };
 
 export interface TextLayout {
   lines: string[];
@@ -128,12 +130,13 @@ const roundBox = (ctx: Ctx2D, x: number, y: number, w: number, h: number, r: num
  * Draws a title in its local space (origin at the title's centre). Each unit
  * — line, word or letter — is drawn with its own transform so per-unit
  * animation, karaoke and per-word highlights compose with every style.
+ * `atRest` draws it settled, without animation or karaoke (while edited).
  */
-export function drawText(ctx: Ctx2D, clip: TextClip, t: number) {
+export function drawText(ctx: Ctx2D, clip: TextClip, t: number, atRest = false) {
   const { style } = clip;
   const fs = style.fontSize;
   const layout = layoutText(ctx, clip);
-  const anim = textAnimationState(clip, t);
+  const anim = atRest ? AT_REST : textAnimationState(clip, t);
   const local = t - clip.start;
 
   ctx.globalAlpha *= anim.opacity;
@@ -174,7 +177,7 @@ export function drawText(ctx: Ctx2D, clip: TextClip, t: number) {
     }
   }
 
-  const karaoke = clip.karaoke ? karaokeAt(clip, t) : null;
+  const karaoke = clip.karaoke && !atRest ? karaokeAt(clip, t) : null;
   const left = -layout.width / 2;
   const blockWidth = layout.width;
 
@@ -184,9 +187,10 @@ export function drawText(ctx: Ctx2D, clip: TextClip, t: number) {
     const text = unit.text.slice(0, visible);
     if (!text) continue;
 
-    const delta = clip.textMotion
-      ? unitDelta(clip.textMotion, unit.index, units.length, local)
-      : GLYPH_IDENTITY;
+    const delta =
+      clip.textMotion && !atRest
+        ? unitDelta(clip.textMotion, unit.index, units.length, local)
+        : GLYPH_IDENTITY;
     if (delta.opacity <= 0) continue;
     const sung = karaoke !== null && unit.word <= karaoke.index;
     const current = karaoke !== null && unit.word === karaoke.index;
@@ -273,7 +277,7 @@ export function drawText(ctx: Ctx2D, clip: TextClip, t: number) {
 
     // 5. Shine: a light band sweeping across the title, painted only on the glyphs.
     if (style.shine && style.shine.period > 0) {
-      const phase = (local % style.shine.period) / style.shine.period;
+      const phase = atRest ? 0.5 : (local % style.shine.period) / style.shine.period;
       const band = blockWidth * SHINE_WIDTH;
       const centre = left - band + phase * (blockWidth + band * 2) - unit.cx;
       const shine = ctx.createLinearGradient(centre - band, -fs * 0.3, centre + band, fs * 0.3);

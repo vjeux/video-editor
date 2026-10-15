@@ -56,6 +56,16 @@ export function clipMenu(clipId: Id, time: number): MenuEntry[] {
   const inside = (t: number) => t > clip.start && t < clip.start + clip.duration;
   const visual = clip.type !== "media" || project.assets[clip.assetId]?.kind !== "audio";
   return [
+    ...(clip.type === "text"
+      ? [
+          item("Edit text", () => state().editText(clipId), {
+            icon: "text",
+            shortcut: "Enter",
+            disabled: locked,
+          }),
+          SEPARATOR,
+        ]
+      : []),
     item("Split here", () => splitClipAt(clipId, time), {
       icon: "split",
       disabled: locked || !inside(time),

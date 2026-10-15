@@ -40,13 +40,14 @@ export class PreviewRenderer {
     return entry.stream.frameAt(sourceTime);
   }
 
-  render(ctx: Ctx2D, project: Project, t: number, playing: boolean) {
+  render(ctx: Ctx2D, project: Project, t: number, playing: boolean, atRest: string | null = null) {
     this.used.clear();
     renderFrame(ctx, project, t, {
       frames: (clip, sourceTime) => this.frame(clip, sourceTime),
       gpu: this.gpu,
       resolve: (id) => resolveEffect(project, id),
       scratch: this.scratch,
+      atRest,
     });
 
     if (playing) {

@@ -43,6 +43,7 @@ export const SHORTCUTS = [
   ["Delete / ripple delete", "⌫ / ⇧⌫"],
   ["Select / blade tool", "V / B"],
   ["Add title / marker", "T / M"],
+  ["Edit selected title", "Enter"],
   ["Snapping / loop", "N / L"],
   ["Zoom timeline", "+ / −"],
   ["Undo / redo", "⌘Z / ⇧⌘Z"],

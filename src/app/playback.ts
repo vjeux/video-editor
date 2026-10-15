@@ -46,7 +46,7 @@ export function attachViewer(canvas: HTMLCanvasElement): () => void {
   const markDirty = () => (dirty = true);
   document.fonts.addEventListener("loadingdone", markDirty);
 
-  let last = { project: state().project, t: -1, width: 0, height: 0 };
+  let last = { project: state().project, t: -1, width: 0, height: 0, editing: state().editingText };
   let frame = 0;
   const tick = () => {
     frame = requestAnimationFrame(tick);
@@ -74,12 +74,19 @@ export function attachViewer(canvas: HTMLCanvasElement): () => void {
       dirty ||
       s.project !== last.project ||
       t !== last.t ||
+      s.editingText !== last.editing ||
       canvas.width !== last.width ||
       canvas.height !== last.height;
     if (!changed) return;
     dirty = false;
-    last = { project: s.project, t, width: canvas.width, height: canvas.height };
-    preview.render(ctx, s.project, t, player.playing);
+    last = {
+      project: s.project,
+      t,
+      width: canvas.width,
+      height: canvas.height,
+      editing: s.editingText,
+    };
+    preview.render(ctx, s.project, t, player.playing, s.editingText);
   };
   tick();
 

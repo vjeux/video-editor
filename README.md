@@ -39,8 +39,9 @@ Built on [Mediabunny](https://mediabunny.dev/) + WebCodecs · React 19 · StyleX
 - **Audio effects.** Voice enhance, EQ, compressor, reverb, echo, bass boost,
   telephone, megaphone, muffled, pitch shift, robot, distortion, tremolo,
   filter, pan and gain. They're heard in playback and baked into the export.
-- **Captions and titles.** Eight bundled fonts with weight, tracking, colour,
-  a box and an outline, plus text looks: adjustable drop shadow, neon glow,
+- **Captions and titles.** Type straight onto the monitor: double-click a
+  title (or press `Enter`) to edit it in place. Eight bundled fonts with
+  weight, tracking, colour, a box and an outline, plus text looks: adjustable drop shadow, neon glow,
   gradient fill, line or word highlight box and a sweeping shine. Per-letter,
   per-word or per-line animation (pop, slide, bounce, typewriter, wave, jiggle
   and more, with stagger and easing), karaoke word highlighting, and one-click
@@ -153,6 +154,7 @@ A pre-commit hook runs `vp check --fix` on staged files.
 | Copy / paste / duplicate    | `⌘C` / `⌘V` / `⌘D`    |
 | Select / blade tool         | `V` / `B`             |
 | Add title / marker          | `T` / `M`             |
+| Edit selected title         | `Enter`               |
 | Toggle snapping / loop      | `N` / `L`             |
 | Zoom timeline               | `+` `−`, or `⌘`+wheel |
 | Undo / redo                 | `⌘Z` / `⇧⌘Z`          |
