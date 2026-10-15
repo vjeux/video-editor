@@ -1,6 +1,8 @@
 import { parseAnnotations } from "../core/annotations";
 import { createTextClip } from "../core/factories";
+import { setTransition } from "../core/effects";
 import { runScript } from "../core/script";
+import { allEffects } from "../effects/resolve";
 import {
   canPlace,
   fillScale,
@@ -43,7 +45,11 @@ export function splitAtPlayhead() {
 }
 
 export function deleteSelection(ripple = false) {
-  const { selection, commit, project } = state();
+  const { selection, commit, project, focusedTransition } = state();
+  if (focusedTransition) {
+    commit((p) => setTransition(p, focusedTransition, null));
+    return;
+  }
   const locked = new Set(project.tracks.filter((t) => t.locked).map((t) => t.id));
   const ids = selection.filter((id) => {
     const clip = project.clips[id];
@@ -180,7 +186,8 @@ export async function importMarkers(file: File): Promise<number> {
 }
 
 export async function runTimelineScript(code: string) {
-  const result = await runScript(state().project, code, newId);
+  const project = state().project;
+  const result = await runScript(project, code, newId, allEffects(project));
   if (!result.error) state().commit(() => result.project);
   return result;
 }

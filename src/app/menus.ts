@@ -3,7 +3,9 @@ import { removeTrack } from "../core/tracks";
 import type { Id, TrackKind } from "../core/types";
 import { editorStore } from "../store";
 import { contextMenuStore, type MenuEntry } from "../store/context-menu";
+import { previousAdjacent } from "../core/effects";
 import { addAssetToTimeline, deleteAsset } from "./assets";
+import { addAdjustmentLayer, applyTransition, findEffect } from "./effects";
 import {
   addMarkerAt,
   addTextAt,
@@ -51,7 +53,7 @@ export function clipMenu(clipId: Id, time: number): MenuEntry[] {
   if (!selection.includes(clipId)) select([clipId]);
   const locked = project.tracks.find((t) => t.id === clip.trackId)?.locked ?? false;
   const inside = (t: number) => t > clip.start && t < clip.start + clip.duration;
-  const visual = clip.type === "text" || project.assets[clip.assetId]?.kind !== "audio";
+  const visual = clip.type !== "media" || project.assets[clip.assetId]?.kind !== "audio";
   return [
     item("Split here", () => splitClipAt(clipId, time), { disabled: locked || !inside(time) }),
     item("Split at playhead", splitAtPlayhead, {
@@ -72,6 +74,11 @@ export function clipMenu(clipId: Id, time: number): MenuEntry[] {
           item("Reset transform", () => resetTransform(clipId), { disabled: locked }),
         ]
       : []),
+    SEPARATOR,
+    item("Crossfade from previous clip", () => applyTransition(clipId, "crossfade"), {
+      disabled: locked || !previousAdjacent(project, clip) || !findEffect("crossfade"),
+    }),
+    item("Add adjustment layer", () => addAdjustmentLayer()),
     SEPARATOR,
     item("Delete", () => deleteSelection(), { shortcut: "⌫", danger: true, disabled: locked }),
     item("Ripple delete", () => deleteSelection(true), {

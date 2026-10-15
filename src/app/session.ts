@@ -1,3 +1,4 @@
+import { migrateProject } from "../core/migrate";
 import type { Project } from "../core/types";
 import {
   deleteMedia,
@@ -18,8 +19,9 @@ const AUTOSAVE_DELAY = 500;
  * bin shows each file's progress). Resolves once the project is in the store.
  */
 async function restoreSession() {
-  const saved = await loadProject();
-  if (!saved) return;
+  const raw = await loadProject();
+  if (!raw) return;
+  const saved = migrateProject(raw);
   editorStore.getState().load(saved);
   sessionStore.setState({ savedAt: Date.now() });
 
