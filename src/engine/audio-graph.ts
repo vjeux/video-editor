@@ -57,7 +57,11 @@ export function scheduleAudio(
     }
 
     // source → audio effect stack → volume/fades → destination
-    const chain = buildAudioChain(ctx, clip.audioEffects, { start: at(begin), stop: at(end) });
+    const chain = buildAudioChain(ctx, clip.audioEffects, {
+      start: at(begin),
+      stop: at(end),
+      elapsed: begin - clip.start,
+    });
     if (chain) {
       source.connect(chain.input);
       chain.output.connect(gain);

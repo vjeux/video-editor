@@ -213,6 +213,8 @@ const TAILS: Readonly<Record<string, (params: Params) => number>> = {
   },
   compressor: (p) => num(p, "attack", 0.01) + num(p, "release", 0.2),
   "voice-enhance": () => 1,
+  // The pitch shifter's read head trails its input by up to one sweep.
+  pitch: () => 0.1,
 };
 
 /** Seconds a clip's effect stack rings on after its sound ends, capped at `MAX_AUDIO_TAIL`. */
