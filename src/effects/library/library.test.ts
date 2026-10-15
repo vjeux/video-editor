@@ -4,12 +4,14 @@ import { BLUR_EFFECTS } from "./blur";
 import { COLOR_EFFECTS } from "./color";
 import { DISTORT_EFFECTS } from "./distort";
 import { BUILTIN_EFFECTS, EFFECT_CATEGORIES } from "./index";
+import { MOTION_EFFECTS } from "./motion";
 import { REVEAL_EFFECTS } from "./reveals";
 import { STYLIZE_EFFECTS } from "./stylize";
 import { TRANSITIONS } from "./transitions";
 
 const GROUPS: { category: string; kind: EffectKind; defs: readonly EffectDefinition[] }[] = [
   { category: "Color", kind: "effect", defs: COLOR_EFFECTS },
+  { category: "Motion", kind: "effect", defs: MOTION_EFFECTS },
   { category: "Blur", kind: "effect", defs: BLUR_EFFECTS },
   { category: "Stylize", kind: "effect", defs: STYLIZE_EFFECTS },
   { category: "Distort", kind: "effect", defs: DISTORT_EFFECTS },

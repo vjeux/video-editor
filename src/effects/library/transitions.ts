@@ -436,4 +436,206 @@ vec4 transition(vec2 uv) {
   return vec4(face.rgb * (1.0 - 0.6 * turned * (1.0 - u)), face.a);
 }`,
   ),
+
+  fx(
+    "flash-transition",
+    `// @name Flash
+// @category Transitions
+// @description A sharp flash of light right at the cut; reads well at 0.2-0.4 s.
+uniform vec3 color; // = vec3(1.0, 1.0, 1.0)
+uniform float intensity; // = 1, min: 0, max: 1.5
+uniform float sharpness; // = 6, min: 1, max: 12
+
+vec4 transition(vec2 uv) {
+  float t = clamp(progress, 0.0, 1.0);
+  // 1 at the cut, 0 at both ends; higher sharpness = shorter peak.
+  float glow = pow(1.0 - abs(2.0 * t - 1.0), sharpness) * intensity;
+  vec4 base = mix(getFromColor(uv), getToColor(uv), smoothstep(0.45, 0.55, t));
+  // Over-expose first, then go solid at the very peak.
+  vec3 rgb = mix(base.rgb * (1.0 + 2.0 * glow), color, smoothstep(0.5, 1.0, glow));
+  return vec4(clamp(rgb, 0.0, 1.0), base.a);
+}`,
+  ),
+
+  fx(
+    "light-leak-transition",
+    `// @name Light Leak
+// @category Transitions
+// @description Warm light floods across the frame and burns through into the next shot.
+uniform vec3 color; // = vec3(1.0, 0.5, 0.15), label: Leak color
+uniform float intensity; // = 1, min: 0, max: 2
+
+// Three soft blobs sweeping in from the left, staggered and tinted toward magenta.
+vec3 leakSweep(vec2 uv, float t) {
+  vec2 p = uv * vec2(ratio, 1.0);
+  vec3 acc = vec3(0.0);
+  for (int i = 0; i < 3; i++) {
+    float fi = float(i);
+    vec2 c = vec2(ratio * (-0.5 + 1.8 * t + 0.25 * fi), 0.25 + 0.3 * fi + 0.1 * sin(t * 6.0 + fi));
+    float d = length(p - c) / (0.4 + 0.25 * fi);
+    acc += mix(color, vec3(1.0, 0.25, 0.45), fi * 0.4) * exp(-d * d);
+  }
+  return acc;
+}
+
+vec4 transition(vec2 uv) {
+  float t = clamp(progress, 0.0, 1.0);
+  float envelope = 4.0 * t * (1.0 - t);
+  vec4 base = mix(getFromColor(uv), getToColor(uv), smoothstep(0.4, 0.6, t));
+  vec3 leak = clamp(leakSweep(uv, t) * envelope * intensity * 1.2, 0.0, 1.0);
+  vec3 rgb = 1.0 - (1.0 - base.rgb) * (1.0 - leak);
+  // Near the middle the whole frame burns out to warm white, hiding the cut.
+  float burnout = clamp(smoothstep(0.92, 1.0, envelope) * intensity, 0.0, 1.0);
+  rgb = mix(rgb, vec3(1.0, 0.96, 0.9), burnout * 0.8);
+  return vec4(clamp(rgb, 0.0, 1.0), base.a);
+}`,
+  ),
+
+  fx(
+    "spin-transition",
+    `// @name Spin
+// @category Transitions
+// @description The frame spins and shrinks away, and the next shot spins back in, with motion blur.
+uniform float rotation; // = 360, min: -1080, max: 1080, label: Total rotation (degrees)
+uniform float zoom; // = 0.6, min: 0, max: 2, label: Zoom out
+uniform float blur; // = 1, min: 0, max: 2, label: Motion blur
+${JITTER}
+vec4 spinSample(vec2 p, bool incoming) {
+  vec2 q = p / vec2(ratio, 1.0) + 0.5;
+  // Mirror-repeat so the shrunken frame is surrounded by reflections, not edges.
+  q = 1.0 - abs(1.0 - mod(q, 2.0));
+  return incoming ? getToColor(q) : getFromColor(q);
+}
+
+vec4 transition(vec2 uv) {
+  float t = clamp(progress, 0.0, 1.0);
+  // Smootherstep and its derivative (angular speed).
+  float p = t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
+  float speed = 30.0 * t * t * (1.0 - t) * (1.0 - t);
+  bool incoming = t >= 0.5;
+  float total = radians(rotation);
+  // The outgoing shot turns from 0; the incoming one finishes at 0.
+  float angle = incoming ? total * (p - 1.0) : total * p;
+  float spread = total * speed * 0.05 * blur;
+  float scale = 1.0 + zoom * 4.0 * t * (1.0 - t);
+  vec2 base = (uv - 0.5) * vec2(ratio, 1.0) * scale;
+  float j = jitter(uv);
+  vec4 acc = vec4(0.0);
+  for (int i = 0; i < 12; i++) {
+    float a = angle + ((float(i) + j) / 12.0 - 0.5) * spread;
+    float s = sin(a);
+    float cs = cos(a);
+    acc += spinSample(vec2(cs * base.x - s * base.y, s * base.x + cs * base.y), incoming);
+  }
+  return acc / 12.0;
+}`,
+  ),
+
+  fx(
+    "rgb-split-transition",
+    `// @name RGB Split
+// @category Transitions
+// @description Colour channels tear apart at the cut, stutter, and snap back together on the next shot.
+uniform float split; // = 0.08, min: 0, max: 0.3, label: Split distance
+uniform float stutter; // = 0.5, min: 0, max: 1
+${NOISE}
+vec4 splitSample(vec2 uv, float m) {
+  vec2 q = clamp(uv, 0.0, 1.0);
+  return mix(getFromColor(q), getToColor(q), m);
+}
+
+vec4 transition(vec2 uv) {
+  float t = clamp(progress, 0.0, 1.0);
+  float envelope = pow(4.0 * t * (1.0 - t), 1.5);
+  float m = smoothstep(0.45, 0.55, t);
+  // The frame jumps sideways on a few random ticks while the split is wide.
+  float tick = floor(t * 16.0);
+  float jump = (hash12(vec2(tick, 3.3)) - 0.5) * 0.06 * stutter * step(0.5, envelope) * step(0.4, hash12(vec2(tick, 8.1)));
+  vec2 q = uv + vec2(jump, 0.0);
+  vec2 off = vec2(split * envelope, 0.0);
+  vec4 r = splitSample(q + off, m);
+  vec4 g = splitSample(q, m);
+  vec4 b = splitSample(q - off, m);
+  return vec4(r.r, g.g, b.b, g.a);
+}`,
+  ),
+
+  fx(
+    "film-burn",
+    `// @name Film Burn
+// @category Transitions
+// @description An orange-white burn spreads from a point, eats the frame and reveals the next shot.
+uniform vec2 center; // = vec2(0.65, 0.4)
+uniform float intensity; // = 1, min: 0, max: 2
+uniform float scale; // = 3, min: 1, max: 10, label: Burn detail
+${NOISE}
+vec3 burnRamp(float x) {
+  vec3 c = mix(vec3(0.5, 0.05, 0.0), vec3(1.0, 0.4, 0.05), smoothstep(0.0, 0.4, x));
+  c = mix(c, vec3(1.0, 0.8, 0.3), smoothstep(0.4, 0.75, x));
+  return mix(c, vec3(1.0), smoothstep(0.75, 1.0, x));
+}
+
+vec4 transition(vec2 uv) {
+  float t = clamp(progress, 0.0, 1.0);
+  vec2 aspect = vec2(ratio, 1.0);
+  float reach = length(max(center, 1.0 - center) * aspect);
+  // Burn order: distance from the centre, roughened by noise. 0..1.
+  vec2 np = uv * aspect * scale;
+  float n = valueNoise(np) * 0.6 + valueNoise(np * 2.3 + 7.0) * 0.4;
+  float order = clamp(length((uv - center) * aspect) / reach * 0.75 + n * 0.25, 0.0, 1.0);
+  float w = 0.15;
+  float front = t * (1.0 + w);
+  float m = smoothstep(order, order + w, front);
+  vec4 base = mix(getFromColor(uv), getToColor(uv), m);
+  // Hottest in a band at the burning front, plus an overall glow mid-transition.
+  float envelope = 4.0 * t * (1.0 - t);
+  float x = front - order - 0.05;
+  float band = exp(-x * x / 0.02);
+  float heat = clamp((band * 1.2 + envelope * 0.3) * envelope * intensity, 0.0, 1.0);
+  vec3 burn = burnRamp(heat) * heat;
+  return vec4(1.0 - (1.0 - base.rgb) * (1.0 - burn), base.a);
+}`,
+  ),
+
+  fx(
+    "zoom-punch-transition",
+    `// @name Zoom Punch
+// @category Transitions
+// @description The shot punches in fast, cuts, and the next one lands with a small overshoot.
+uniform float punch; // = 0.6, min: 0, max: 2, label: Zoom
+uniform float blur; // = 1, min: 0, max: 2, label: Motion blur
+uniform vec2 center; // = vec2(0.5, 0.5)
+${JITTER}
+vec2 punchUv(vec2 uv, float zoom) {
+  vec2 q = center + (uv - center) / zoom;
+  // Mirror-repeat covers the brief moment the overshoot zooms out past the frame.
+  return 1.0 - abs(1.0 - mod(q, 2.0));
+}
+
+vec4 transition(vec2 uv) {
+  float t = clamp(progress, 0.0, 1.0);
+  float j = jitter(uv);
+  vec4 acc = vec4(0.0);
+  if (t < 0.5) {
+    // Accelerating push in; the blur follows the zoom speed.
+    float x = t * 2.0;
+    float zoom = 1.0 + punch * x * x * x;
+    float spread = blur * punch * 0.25 * x * x;
+    for (int i = 0; i < 10; i++) {
+      float k = 1.0 + ((float(i) + j) / 10.0 - 0.5) * spread;
+      acc += getFromColor(punchUv(uv, zoom * k));
+    }
+    return acc / 10.0;
+  }
+  // Lands zoomed in, swings slightly past 1, settles exactly at 1.
+  float u = t * 2.0 - 1.0;
+  float zoom = 1.0 + punch * 0.5 * exp(-4.0 * u) * cos(7.853982 * u) * (1.0 - u);
+  float spread = blur * punch * 0.3 * (1.0 - u) * (1.0 - u) * (1.0 - u);
+  for (int i = 0; i < 10; i++) {
+    float k = 1.0 + ((float(i) + j) / 10.0 - 0.5) * spread;
+    acc += getToColor(punchUv(uv, max(zoom * k, 0.05)));
+  }
+  return acc / 10.0;
+}`,
+  ),
 ];

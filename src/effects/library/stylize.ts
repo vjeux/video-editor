@@ -1,5 +1,5 @@
 import type { EffectDefinition } from "../../core/types";
-import { JITTER, LUMA, NOISE, PREMUL, SOBEL, fx } from "./shared";
+import { HSV, JITTER, LUMA, NOISE, PREMUL, SOBEL, fx } from "./shared";
 
 export const STYLIZE_EFFECTS: readonly EffectDefinition[] = [
   fx(
@@ -532,6 +532,63 @@ vec4 effect(vec2 uv) {
     return vec4(mix(dark, light, clamp(v, 0.0, 1.0)), c.a);
   }
   return vec4(clamp(floor(c.rgb * n + threshold) / n, 0.0, 1.0), c.a);
+}`,
+  ),
+
+  fx(
+    "light-leak",
+    `// @name Light Leak
+// @category Stylize
+// @description Drifting warm film light leaking over the image (screen blend).
+uniform float amount; // = 0.6, min: 0, max: 1
+uniform float speed; // = 0.3, min: 0, max: 2
+uniform float hue; // = 0, min: -180, max: 180, label: Hue shift (degrees)
+${NOISE}${HSV}
+// Soft orange and magenta blobs drifting on slow Lissajous paths.
+vec3 leakField(vec2 uv, float t) {
+  vec2 p = uv * vec2(ratio, 1.0);
+  vec3 acc = vec3(0.0);
+  for (int i = 0; i < 4; i++) {
+    float fi = float(i);
+    vec2 c = vec2(
+      ratio * (0.5 + 0.65 * sin(t * (0.7 + 0.13 * fi) + fi * 2.1)),
+      0.5 + 0.6 * cos(t * (0.5 + 0.11 * fi) + fi * 1.7)
+    );
+    float d = length(p - c) / (0.35 + 0.15 * sin(t * 0.9 + fi));
+    vec3 tone = i % 2 == 0 ? vec3(1.0, 0.45, 0.1) : vec3(1.0, 0.2, 0.45);
+    acc += tone * exp(-d * d);
+  }
+  return acc;
+}
+
+vec4 effect(vec2 uv) {
+  vec4 c = getColor(uv);
+  float t = time * speed + 3.0;
+  // The leak breathes slowly in strength.
+  vec3 leak = clamp(leakField(uv, t) * (0.75 + 0.25 * valueNoise(vec2(t * 1.5, 0.5))), 0.0, 1.0);
+  vec3 hsv = rgb2hsv(leak);
+  hsv.x = fract(hsv.x + hue / 360.0);
+  leak = clamp(hsv2rgb(hsv), 0.0, 1.0) * amount;
+  // Screen blend: only ever brightens.
+  return vec4(1.0 - (1.0 - c.rgb) * (1.0 - leak), c.a);
+}`,
+  ),
+
+  fx(
+    "flash",
+    `// @name Flash
+// @category Stylize
+// @description A bright exposure flash at the start of the clip that quickly fades.
+uniform float fadeTime; // = 0.15, min: 0.02, max: 2, label: Length (seconds)
+uniform vec3 color; // = vec3(1.0, 1.0, 1.0)
+uniform float intensity; // = 1, min: 0, max: 2
+
+vec4 effect(vec2 uv) {
+  vec4 c = getColor(uv);
+  float k = clamp(1.0 - max(time, 0.0) / fadeTime, 0.0, 1.0);
+  // Squared falloff: blinding at first, then a quick tail.
+  float flash = k * k * intensity;
+  return vec4(clamp(c.rgb + color * flash * 1.5, 0.0, 1.0), c.a);
 }`,
   ),
 ];

@@ -2,6 +2,7 @@ import type { EffectDefinition } from "../../core/types";
 import { BLUR_EFFECTS } from "./blur";
 import { COLOR_EFFECTS } from "./color";
 import { DISTORT_EFFECTS } from "./distort";
+import { MOTION_EFFECTS } from "./motion";
 import { REVEAL_EFFECTS } from "./reveals";
 import { STYLIZE_EFFECTS } from "./stylize";
 import { TRANSITIONS } from "./transitions";
@@ -9,6 +10,7 @@ import { TRANSITIONS } from "./transitions";
 /** Library order: categories are listed in the order they first appear here. */
 const ALL: readonly EffectDefinition[] = [
   ...COLOR_EFFECTS,
+  ...MOTION_EFFECTS,
   ...BLUR_EFFECTS,
   ...STYLIZE_EFFECTS,
   ...DISTORT_EFFECTS,
