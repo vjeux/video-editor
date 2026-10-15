@@ -56,7 +56,15 @@ function withStart(clip: Clip, start: Seconds): Clip {
   if (clip.type === "media" && clip.speedRamp) return bakeRamp(clip, start, clipEnd(clip));
   const delta = start - clip.start;
   const moved = { ...clip, start, duration: clip.duration - delta };
-  return moved.type === "media" ? { ...moved, offset: moved.offset + delta * rate(clip) } : moved;
+  if (moved.type === "media") return { ...moved, offset: moved.offset + delta * rate(clip) };
+  // Word timings are relative to the start; the words themselves stay put.
+  if (moved.type === "text" && moved.words) {
+    return {
+      ...moved,
+      words: moved.words.map((w) => ({ ...w, start: w.start - delta, end: w.end - delta })),
+    };
+  }
+  return moved;
 }
 
 const withEnd = (clip: Clip, end: Seconds): Clip =>
