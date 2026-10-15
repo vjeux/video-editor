@@ -1,4 +1,4 @@
-import { DEFAULT_TEXT_SHADOW } from "./factories";
+import { DEFAULT_MEDIA_APPEARANCE, DEFAULT_MEDIA_BORDER, DEFAULT_TEXT_SHADOW } from "./factories";
 import type { Project } from "./types";
 
 type Raw = Record<string, unknown>;
@@ -34,6 +34,7 @@ const TYPE_DEFAULTS: Record<string, Raw> = {
 
 /** Nested objects that gained fields: merged so existing keys win. */
 const NESTED_DEFAULTS: Record<string, Record<string, Raw>> = {
+  media: { appearance: { ...DEFAULT_MEDIA_APPEARANCE } },
   text: {
     style: {
       stroke: null,
@@ -63,13 +64,31 @@ function repair(project: Raw): Raw {
         ...Object.fromEntries(
           Object.entries(NESTED_DEFAULTS[clip.type as string] ?? {}).map(([key, defaults]) => [
             key,
-            { ...defaults, ...(clip[key] as Raw) },
+            key === "appearance"
+              ? repairAppearance(clip[key] as Raw | undefined)
+              : { ...defaults, ...(clip[key] as Raw) },
           ]),
         ),
       },
     ]),
   );
   return { ...project, customEffects: project.customEffects ?? {}, clips };
+}
+
+function repairAppearance(raw: Raw | undefined): Raw {
+  const appearance = { ...DEFAULT_MEDIA_APPEARANCE, ...raw } as Raw;
+  for (const key of ["padding", "crop", "position", "mask"] as const) {
+    const value = appearance[key];
+    if (value && typeof value === "object" && !Array.isArray(value))
+      appearance[key] = { ...DEFAULT_MEDIA_APPEARANCE[key], ...value };
+  }
+  if (
+    appearance.border &&
+    typeof appearance.border === "object" &&
+    !Array.isArray(appearance.border)
+  )
+    appearance.border = { ...DEFAULT_MEDIA_BORDER, ...appearance.border };
+  return appearance;
 }
 
 /** Upgrades a saved project to the current schema, failing on unknown versions. */
