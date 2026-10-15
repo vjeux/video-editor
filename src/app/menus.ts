@@ -4,7 +4,8 @@ import type { Id, TrackKind } from "../core/types";
 import { editorStore } from "../store";
 import { contextMenuStore, type MenuEntry } from "../store/context-menu";
 import { previousAdjacent } from "../core/effects";
-import { addAssetToTimeline, deleteAsset } from "./assets";
+import { addAssetToTimeline, deleteAsset, freezeFrame } from "./assets";
+import { reportError } from "./errors";
 import { addAdjustmentLayer, applyTransition, findEffect } from "./effects";
 import {
   addMarkerAt,
@@ -79,6 +80,14 @@ export function clipMenu(clipId: Id, time: number): MenuEntry[] {
       disabled: locked || !previousAdjacent(project, clip) || !findEffect("crossfade"),
     }),
     item("Add adjustment layer", () => addAdjustmentLayer()),
+    item("Freeze frame at playhead", () => void freezeFrame().catch(reportError), {
+      shortcut: "F",
+      disabled:
+        locked ||
+        clip.type !== "media" ||
+        project.assets[clip.assetId]?.kind !== "video" ||
+        !inside(playhead),
+    }),
     SEPARATOR,
     item("Delete", () => deleteSelection(), { shortcut: "⌫", danger: true, disabled: locked }),
     item("Ripple delete", () => deleteSelection(true), {

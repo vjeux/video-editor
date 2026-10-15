@@ -17,7 +17,9 @@ import {
 import { trackFor } from "../core/tracks";
 import type { Clip, Id, Project } from "../core/types";
 import { editorStore } from "../store";
+import { freezeFrame } from "./assets";
 import { newId } from "./engine";
+import { reportError } from "./errors";
 import { pause, seek, togglePlay } from "./playback";
 
 const state = () => editorStore.getState();
@@ -130,6 +132,7 @@ export const SHORTCUTS: Record<string, Shortcut> = {
   KeyN: () => state().setView({ snapping: !state().snapping }),
   KeyL: () => state().setView({ loop: !state().loop }),
   KeyM: addMarker,
+  KeyF: () => void freezeFrame().catch(reportError),
   "Mod+KeyC": copySelection,
   "Mod+KeyV": pasteAtPlayhead,
   "Mod+KeyD": duplicateSelection,

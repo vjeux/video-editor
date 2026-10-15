@@ -10,11 +10,11 @@ import {
   setTransition,
   updateEffect,
 } from "../core/effects";
-import { createAdjustmentClip } from "../core/factories";
+import { createAdjustmentClip, DEFAULT_ADJUSTMENT_DURATION } from "../core/factories";
 import { lutDefinition, parseCubeLut } from "../core/lut";
 import { definitionFromSource } from "../core/shader-source";
 import { placeClip } from "../core/timeline";
-import { trackFor } from "../core/tracks";
+import { overlayTrackFor } from "../core/tracks";
 import type { ClipAnimation, EffectDefinition, Id, Params, Project } from "../core/types";
 import type { Drawable } from "../engine/compositor";
 import { createGpu, type GpuEffects } from "../engine/gpu";
@@ -107,7 +107,7 @@ export function updateTransition(
 
 export const setClipAnimation = (
   clipId: Id,
-  which: "in" | "out",
+  which: "in" | "out" | "loop",
   animation: ClipAnimation | null,
   coalesce?: string,
 ) => state().commit((p) => setAnimation(p, clipId, which, animation), { coalesce });
@@ -116,8 +116,9 @@ export const setClipAnimation = (
 export function addAdjustmentLayer(effectId?: string) {
   const id = newId();
   state().commit((p) => {
-    const target = trackFor(p, "adjustment", newId);
-    const clip = createAdjustmentClip({ id, trackId: target.trackId, start: state().playhead });
+    const start = state().playhead;
+    const target = overlayTrackFor(p, "adjustment", start, DEFAULT_ADJUSTMENT_DURATION, newId);
+    const clip = createAdjustmentClip({ id, trackId: target.trackId, start });
     const placed = placeClip(target.project, clip, newId);
     return effectId ? addEffect(placed, [id], requireEffect(effectId), newId) : placed;
   });
