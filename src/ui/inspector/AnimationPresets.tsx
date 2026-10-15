@@ -25,7 +25,7 @@ const styles = stylex.create({
   plain: { backgroundImage: "none", backgroundColor: colors.panel2, color: colors.muted },
   on: {
     borderColor: { default: "transparent", ":hover": "transparent" },
-    boxShadow: `0 0 0 2px ${colors.accent}`,
+    boxShadow: `inset 0 0 0 2px ${colors.accent}`,
   },
   preview: {
     display: "flex",

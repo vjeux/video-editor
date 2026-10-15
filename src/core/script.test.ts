@@ -80,3 +80,68 @@ describe("runScript", () => {
     expect(error).toMatch(/does not accept/);
   });
 });
+
+describe("effects in scripts", () => {
+  const catalog = [
+    {
+      id: "vignette",
+      name: "Vignette",
+      kind: "effect" as const,
+      category: "Light",
+      description: "",
+      author: "",
+      source: "",
+      params: [{ key: "amount", label: "Amount", type: "float" as const, default: 0.5 }],
+      lut: null,
+    },
+    {
+      id: "crossfade",
+      name: "Crossfade",
+      kind: "transition" as const,
+      category: "Transitions",
+      description: "",
+      author: "",
+      source: "",
+      params: [],
+      lut: null,
+    },
+  ];
+  const runWith = (code: string) => runScript(base(), code, sequentialIds("s"), catalog);
+
+  it("adds effects, transitions and animations by name", async () => {
+    const { project, error } = await runWith(`
+      const [a, b] = timeline.clips({ type: "video" });
+      a.addEffect("Vignette", { amount: 0.9 });
+      b.setTransition("crossfade", { duration: 0.5 });
+      b.animateIn("fade", { duration: 0.3, easing: "easeOut" });
+      log(timeline.effects().map((e) => e.name).join(","));
+    `);
+    expect(error).toBeNull();
+    expect(project.clips.v1?.effects).toMatchObject([
+      { effectId: "vignette", params: { amount: 0.9 } },
+    ]);
+    expect(project.clips.v2?.transitionIn).toMatchObject({ effectId: "crossfade", duration: 0.5 });
+    expect(project.clips.v2?.animationIn).toEqual({
+      presetId: "fade",
+      duration: 0.3,
+      easing: "easeOut",
+    });
+  });
+
+  it("adds adjustment layers", async () => {
+    const { project } = await runWith(
+      `timeline.addAdjustment({ start: 1, duration: 2 }).addEffect("vignette")`,
+    );
+    const adjustment = Object.values(project.clips).find((c) => c.type === "adjustment");
+    expect(adjustment).toMatchObject({
+      start: 1,
+      duration: 2,
+      effects: [{ effectId: "vignette" }],
+    });
+  });
+
+  it("reports unknown effects", async () => {
+    const { error } = await runWith(`timeline.clips()[0].addEffect("Nope")`);
+    expect(error).toMatch(/No effect "Nope"/);
+  });
+});

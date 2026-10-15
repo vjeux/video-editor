@@ -4,6 +4,7 @@ import { useEditor } from "../../store";
 import { IconButton } from "../controls/IconButton";
 import { Kbd } from "../controls/Kbd";
 import { colors } from "../theme/tokens.stylex";
+import { AdjustmentLayerButton } from "./AdjustmentLayerButton";
 import { ImportMarkersButton } from "./ImportMarkersButton";
 import { ZoomControl } from "./ZoomControl";
 
@@ -67,6 +68,7 @@ export function TimelineToolbar({ width }: { width: number }) {
       />
       <IconButton icon="split" title="Split at playhead (S)" onClick={splitAtPlayhead} size={15} />
       <IconButton icon="text" title="Add title (T)" onClick={() => addText()} size={15} />
+      <AdjustmentLayerButton />
       <div {...stylex.props(styles.sep)} />
       <IconButton
         icon="magnet"

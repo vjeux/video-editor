@@ -11,6 +11,8 @@ export interface EditorState {
   future: Project[];
   coalesceKey: string | null;
   selection: Id[];
+  /** Clip whose incoming transition is selected (mutually exclusive with `selection`). */
+  focusedTransition: Id | null;
   playhead: number;
   playing: boolean;
   pxPerSecond: number;
@@ -24,6 +26,7 @@ export interface EditorState {
   redo: () => void;
   load: (project: Project) => void;
   select: (ids: Id[]) => void;
+  focusTransition: (clipId: Id) => void;
   setPlayhead: (t: number) => void;
   setPlaying: (playing: boolean) => void;
   setView: (
@@ -43,7 +46,15 @@ export function createEditorStore(initial: Project): EditorStore {
     const setProject = (
       project: Project,
       history: Pick<EditorState, "past" | "future" | "coalesceKey">,
-    ) => set({ project, ...history, selection: existing(project, get().selection) });
+    ) => {
+      const focused = get().focusedTransition;
+      set({
+        project,
+        ...history,
+        selection: existing(project, get().selection),
+        focusedTransition: focused && focused in project.clips ? focused : null,
+      });
+    };
 
     return {
       project: initial,
@@ -51,6 +62,7 @@ export function createEditorStore(initial: Project): EditorStore {
       future: [],
       coalesceKey: null,
       selection: [],
+      focusedTransition: null,
       playhead: 0,
       playing: false,
       pxPerSecond: 40,
@@ -96,13 +108,22 @@ export function createEditorStore(initial: Project): EditorStore {
           future: [],
           coalesceKey: null,
           selection: [],
+          focusedTransition: null,
           playhead: 0,
           playing: false,
         });
       },
 
+      focusTransition(clipId) {
+        set({ selection: [], focusedTransition: clipId, coalesceKey: null });
+      },
+
       select(ids) {
-        set({ selection: existing(get().project, ids), coalesceKey: null });
+        set({
+          selection: existing(get().project, ids),
+          focusedTransition: null,
+          coalesceKey: null,
+        });
       },
 
       setPlayhead(t) {

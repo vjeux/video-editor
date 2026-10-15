@@ -9,10 +9,14 @@ import { Select } from "../controls/Select";
 import { SliderRow } from "../controls/SliderRow";
 import { TextArea } from "../controls/TextArea";
 import { Toggle } from "../controls/Toggle";
+import { AnimationGroup } from "./AnimationGroup";
 import { AnimationPresets } from "./AnimationPresets";
 import { ColorSwatches } from "./ColorSwatches";
+import { EffectsGroup } from "./EffectsGroup";
 import { FadeGroup } from "./FadeGroup";
+import { CaptionPresets } from "./CaptionPresets";
 import { Group } from "./Group";
+import { OutlineRow } from "./OutlineRow";
 import { BOX_BACKGROUND, COLORS, FONTS, WEIGHTS } from "./options";
 import { TransformGroup } from "./TransformGroup";
 
@@ -114,12 +118,18 @@ export function TextInspector({ clip }: { clip: TextClip }) {
             onChange={(on) => setStyle({ background: on ? BOX_BACKGROUND : null })}
           />
         </Row>
+        <OutlineRow clip={clip} />
       </Group>
-      <Group title="Animation">
+      <Group title="Caption style">
+        <CaptionPresets clip={clip} />
+      </Group>
+      <Group title="Text animation">
         <AnimationPresets clip={clip} />
       </Group>
       <TransformGroup clip={clip} />
+      <EffectsGroup clip={clip} />
       <FadeGroup clip={clip} />
+      <AnimationGroup clip={clip} />
     </>
   );
 }

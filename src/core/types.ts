@@ -39,6 +39,37 @@ export interface Transform {
   opacity: number;
 }
 
+/** A shader parameter value: numbers, toggles, hex colours ("#rrggbb") or 2D vectors. */
+export type ParamValue = number | boolean | string | readonly [number, number];
+export type Params = Readonly<Record<string, ParamValue>>;
+
+/** One entry of a clip's effect stack; `effectId` names an `EffectDefinition`. */
+export interface EffectInstance {
+  id: Id;
+  effectId: string;
+  enabled: boolean;
+  params: Params;
+}
+
+/** A transition from the previous adjacent clip on the track into this one, centred on the cut. */
+export interface TransitionInstance {
+  effectId: string;
+  duration: Seconds;
+  params: Params;
+}
+
+export type Easing = "linear" | "easeOut" | "easeInOut" | "backOut" | "bounceOut" | "elasticOut";
+
+/**
+ * An enter, exit or loop animation. Exits play the preset in reverse; for
+ * loops `duration` is the period of one cycle.
+ */
+export interface ClipAnimation {
+  presetId: string;
+  duration: Seconds;
+  easing: Easing;
+}
+
 interface ClipBase {
   id: Id;
   trackId: Id;
@@ -47,6 +78,12 @@ interface ClipBase {
   fadeIn: Seconds;
   fadeOut: Seconds;
   transform: Transform;
+  /** Applied in order, in frame space, after the clip is placed. */
+  effects: readonly EffectInstance[];
+  transitionIn: TransitionInstance | null;
+  animationIn: ClipAnimation | null;
+  animationOut: ClipAnimation | null;
+  animationLoop: ClipAnimation | null;
 }
 
 export interface MediaClip extends ClipBase {
@@ -56,6 +93,10 @@ export interface MediaClip extends ClipBase {
   offset: Seconds;
   speed: number;
   volume: number;
+  /** Variable-speed curve (a preset id); the clip's average speed stays `speed`. */
+  speedRamp: string | null;
+  /** Web Audio effect chain applied to the clip's sound, in order. */
+  audioEffects: readonly EffectInstance[];
 }
 
 export type TextAnimation = "none" | "fade" | "rise" | "type" | "blur";
@@ -70,6 +111,8 @@ export interface TextStyle {
   align: TextAlign;
   /** Translucent box behind the text; `null` for none. */
   background: string | null;
+  /** Outline around the glyphs (caption style); `null` for none. */
+  stroke: { color: string; width: number } | null;
 }
 
 export interface TextClip extends ClipBase {
@@ -79,9 +122,45 @@ export interface TextClip extends ClipBase {
   animation: TextAnimation;
 }
 
-export type Clip = MediaClip | TextClip;
+/** Applies its effects to everything composited below it while active. */
+export interface AdjustmentClip extends ClipBase {
+  type: "adjustment";
+}
 
-export type ClipKind = AssetKind | "text";
+export type Clip = MediaClip | TextClip | AdjustmentClip;
+
+export type ClipKind = AssetKind | "text" | "adjustment";
+
+export type EffectKind = "effect" | "transition";
+export type ParamType = "float" | "int" | "bool" | "color" | "vec2";
+
+export interface ParamDef {
+  key: string;
+  label: string;
+  type: ParamType;
+  default: ParamValue;
+  min?: number;
+  max?: number;
+  step?: number;
+}
+
+/**
+ * A GLSL effect or transition. Effects implement `vec4 effect(vec2 uv)` and
+ * transitions `vec4 transition(vec2 uv)` (the gl-transitions convention);
+ * parameters are declared as uniforms with `// = default` comments.
+ */
+export interface EffectDefinition {
+  id: string;
+  name: string;
+  kind: EffectKind;
+  category: string;
+  description: string;
+  author: string;
+  source: string;
+  params: readonly ParamDef[];
+  /** 3D colour lookup table for LUT effects: RGB8 cube of `size`³, base64. */
+  lut: { size: number; data: string } | null;
+}
 
 export interface Marker {
   id: Id;
@@ -97,7 +176,7 @@ export interface ProjectSettings {
 }
 
 export interface Project {
-  version: 1;
+  version: 3;
   name: string;
   settings: ProjectSettings;
   assets: Record<Id, Asset>;
@@ -105,6 +184,8 @@ export interface Project {
   tracks: Track[];
   clips: Record<Id, Clip>;
   markers: Marker[];
+  /** User-created and imported effects, saved with the project. */
+  customEffects: Record<string, EffectDefinition>;
 }
 
 export type IdFactory = () => Id;

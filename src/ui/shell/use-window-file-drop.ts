@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { importFiles } from "../../app/assets";
+import { importEffectFiles, isEffectFile } from "../../app/effects";
 
 const hasFiles = (e: DragEvent) => e.dataTransfer?.types.includes("Files") ?? false;
 
@@ -26,7 +27,11 @@ export function useWindowFileDrop(): boolean {
       setOver(false);
       if (!hasFiles(e)) return;
       e.preventDefault();
-      void importFiles([...(e.dataTransfer?.files ?? [])]);
+      const files = [...(e.dataTransfer?.files ?? [])];
+      const effects = files.filter(isEffectFile);
+      if (effects.length) void importEffectFiles(effects);
+      const media = files.filter((f) => !isEffectFile(f));
+      if (media.length) void importFiles(media);
     };
     const listeners = { dragenter: enter, dragleave: leave, dragover: over, drop } as const;
     for (const [type, fn] of Object.entries(listeners))

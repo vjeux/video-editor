@@ -11,10 +11,11 @@ import {
 import { installShortcuts } from "../../app/commands";
 import { sessionRestored, startAutosave } from "../../app/session";
 import { Inspector } from "../inspector/Inspector";
-import { MediaBin } from "../media/MediaBin";
+import { LibraryPanel } from "../library/LibraryPanel";
 import { ContextMenu } from "../menu/ContextMenu";
 import { DropOverlay } from "./DropOverlay";
-import { ExportDialog, preloadDialogs, ScriptDialog } from "./lazy-dialogs";
+import { studioStore, useStudio } from "../../store/studio";
+import { EffectStudio, ExportDialog, preloadDialogs, ScriptDialog } from "./lazy-dialogs";
 import { Notices } from "./Notices";
 import { TimelineSplitter } from "./TimelineSplitter";
 import { UnsupportedBanner } from "./UnsupportedBanner";
@@ -37,7 +38,7 @@ const styles = stylex.create({
     display: "grid",
     gridTemplateColumns: {
       default: "260px minmax(0, 1fr) 290px",
-      "@media (max-width: 1100px)": "210px minmax(0, 1fr) 250px",
+      "@media (max-width: 1100px)": "236px minmax(0, 1fr) 250px",
     },
     gap: 1,
     overflow: "hidden",
@@ -65,6 +66,7 @@ export function Editor() {
   const [opened, setOpened] = useState<ReadonlySet<Dialog>>(new Set());
   const [timelineHeight, setTimelineHeight] = useState(DEFAULT_TIMELINE);
   const dropping = useWindowFileDrop();
+  const studioOpen = useStudio((s) => s.target !== null);
 
   useEffect(() => {
     const stopAutosave = startAutosave();
@@ -93,7 +95,7 @@ export function Editor() {
         <TopBar onExport={() => show("export")} onScript={() => show("script")} />
       </div>
       <div {...stylex.props(styles.cell, styles.media)}>
-        <MediaBin />
+        <LibraryPanel />
       </div>
       <div {...stylex.props(styles.cell, styles.viewer)}>
         <Viewer />
@@ -126,6 +128,8 @@ export function Editor() {
             </ViewTransition>
           </Activity>
         )}
+        {/* The studio unmounts on close so its editor, timers and preview loop are released. */}
+        {studioOpen && <EffectStudio onClose={() => studioStore.getState().close()} />}
       </Suspense>
       {dropping && <DropOverlay />}
       {!SUPPORTED && <UnsupportedBanner />}

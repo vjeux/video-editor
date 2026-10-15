@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import { createProject } from "./factories";
 import { emptyProject, sequentialIds, videoClip, withClips } from "./fixtures.test-utils";
-import { addTrack, removeTrack, trackFor, trackLabel } from "./tracks";
+import { addTrack, overlayTrackFor, removeTrack, trackFor, trackLabel } from "./tracks";
 
 describe("addTrack", () => {
   it("stacks titles on top, video above existing video, audio at the bottom", () => {
@@ -58,5 +58,24 @@ describe("trackLabel", () => {
     expect(trackLabel(project, "v2")).toBe("V2");
     expect(trackLabel(project, "V1")).toBe("V1");
     expect(trackLabel(project, "A1")).toBe("A1");
+  });
+});
+
+describe("overlayTrackFor", () => {
+  it("creates a track above footage instead of carving into it", () => {
+    const base = withClips(emptyProject(), videoClip("v", 0, 10));
+    const { project, trackId } = overlayTrackFor(base, "adjustment", 2, 3, () => "fx-track");
+    expect(trackId).toBe("fx-track");
+    const order = project.tracks.map((t) => t.id);
+    expect(order.indexOf("fx-track")).toBeLessThan(order.indexOf("V1"));
+  });
+
+  it("reuses a free track that sits above the footage", () => {
+    const base = addTrack(withClips(emptyProject(), videoClip("v", 0, 10)), "video", "V2").project;
+    expect(overlayTrackFor(base, "adjustment", 2, 3, () => "new").trackId).toBe("V2");
+  });
+
+  it("uses the first compatible track when nothing visual is underneath", () => {
+    expect(overlayTrackFor(emptyProject(), "adjustment", 2, 3, () => "new").trackId).toBe("V1");
   });
 });

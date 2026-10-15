@@ -2,6 +2,7 @@ import { projectDuration } from "../core/timeline";
 import { PreviewRenderer } from "../engine/preview";
 import { editorStore } from "../store";
 import { media, player } from "./engine";
+import { reportError } from "./errors";
 
 const state = () => editorStore.getState();
 
@@ -41,7 +42,7 @@ export function attachViewer(canvas: HTMLCanvasElement): () => void {
   const ctx = canvas.getContext("2d", { alpha: false });
   if (!ctx) throw new Error("Could not create the preview canvas");
   let dirty = true;
-  const preview = new PreviewRenderer(media, () => (dirty = true));
+  const preview = new PreviewRenderer(media, () => (dirty = true), reportError);
   const markDirty = () => (dirty = true);
   document.fonts.addEventListener("loadingdone", markDirty);
 

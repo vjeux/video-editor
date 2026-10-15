@@ -6,6 +6,7 @@ import type { Clip, Project } from "../../core/types";
 import { useEditor } from "../../store";
 import { colors, fonts } from "../theme/tokens.stylex";
 import { ClipArt } from "./ClipArt";
+import { effectNames } from "./effect-names";
 import { LANE_HEIGHT, type Viewport } from "./lanes";
 
 export type ClipEdge = "start" | "end";
@@ -27,20 +28,32 @@ const styles = stylex.create({
   at: (left: number, width: number) => ({ left, width }),
   blade: { cursor: "crosshair" },
   selected: {
-    boxShadow: `0 0 0 2px #fff, 0 0 0 4px ${colors.accent}`,
+    boxShadow: `inset 0 0 0 2px ${colors.accent}, inset 0 0 0 3.5px #fff`,
     zIndex: 2,
   },
   ghost: {
     opacity: 0.85,
     zIndex: 4,
     pointerEvents: "none",
-    boxShadow: `0 0 0 2px ${colors.accent2}, 0 10px 24px rgba(0, 0, 0, 0.5)`,
+    boxShadow: `inset 0 0 0 2px ${colors.accent2}, 0 10px 24px rgba(0, 0, 0, 0.5)`,
   },
-  invalid: { boxShadow: `0 0 0 2px ${colors.danger}` },
+  invalid: { boxShadow: `inset 0 0 0 2px ${colors.danger}` },
+  target: {
+    boxShadow: `inset 0 0 0 2px ${colors.pink}, inset 0 0 14px ${colors.pink}`,
+    filter: "brightness(1.2)",
+    zIndex: 2,
+  },
   video: { backgroundColor: colors.video2 },
   image: { backgroundColor: colors.video2 },
   audio: { backgroundColor: colors.audioDeep },
   text: { backgroundImage: "linear-gradient(180deg, #8a46b8, #6a3290)" },
+  adjustment: {
+    borderStyle: "dashed",
+    borderColor: "rgba(95, 224, 210, 0.55)",
+    backgroundColor: "rgba(35, 150, 140, 0.32)",
+    backgroundImage:
+      "repeating-linear-gradient(135deg, rgba(95, 224, 210, 0.16) 0 6px, transparent 6px 12px)",
+  },
   shade: {
     position: "absolute",
     inset: 0,
@@ -62,6 +75,23 @@ const styles = stylex.create({
     pointerEvents: "none",
   },
   titleGlyph: { fontFamily: fonts.mono, opacity: 0.7, marginInlineEnd: 6 },
+  adjustmentName: { color: "#9ff0e6", marginInlineEnd: 6 },
+  adjustmentEffects: { opacity: 0.75, fontWeight: 450 },
+  fx: {
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    fontWeight: 700,
+    fontStyle: "italic",
+    lineHeight: "12px",
+    marginInlineEnd: 5,
+    paddingBlock: 0,
+    paddingInline: 3,
+    borderRadius: 3,
+    color: "#1a1030",
+    backgroundColor: colors.accent2,
+    pointerEvents: "auto",
+    cursor: "help",
+  },
   fade: {
     position: "absolute",
     top: 0,
@@ -78,6 +108,14 @@ const styles = stylex.create({
     backgroundImage: "linear-gradient(to bottom left, rgba(0, 0, 0, 0.45) 50%, transparent 50%)",
   },
   fadeWidth: (width: number) => ({ width }),
+  animationIn: {
+    left: 0,
+    backgroundImage: "linear-gradient(to top left, rgba(169, 157, 255, 0.4) 50%, transparent 50%)",
+  },
+  animationOut: {
+    right: 0,
+    backgroundImage: "linear-gradient(to top right, rgba(169, 157, 255, 0.4) 50%, transparent 50%)",
+  },
   speed: {
     position: "absolute",
     right: 5,
@@ -135,6 +173,7 @@ export function ClipView({
   selected,
   ghost,
   invalid,
+  target,
   view,
   onPointerDown,
 }: {
@@ -143,6 +182,8 @@ export function ClipView({
   selected: boolean;
   ghost: boolean;
   invalid: boolean;
+  /** Highlighted as the drop target of an effect dragged from the library. */
+  target: boolean;
   view: Viewport;
   onPointerDown: (e: ReactPointerEvent, clip: Clip, edge: ClipEdge | null) => void;
 }) {
@@ -154,7 +195,14 @@ export function ClipView({
   const x = timeToX(clip.start, pps);
   const width = Math.max(2, timeToX(clip.duration, pps) - 1);
   const height = LANE_HEIGHT[track?.kind ?? "video"] - 8;
-  const label = clip.type === "text" ? clip.text.split("\n")[0] : (asset?.name ?? "Missing media");
+  const label =
+    clip.type === "text"
+      ? clip.text.split("\n")[0]
+      : clip.type === "adjustment"
+        ? effectNames(project, clip.effects).join(", ")
+        : (asset?.name ?? "Missing media");
+  const enabledEffects = clip.type === "adjustment" ? [] : clip.effects.filter((e) => e.enabled);
+  const rampWidth = (seconds: number) => timeToX(Math.min(seconds, clip.duration), pps);
   const art =
     clip.type !== "media"
       ? null
@@ -175,6 +223,7 @@ export function ClipView({
         selected && styles.selected,
         ghost && styles.ghost,
         invalid && styles.invalid,
+        target && styles.target,
       )}
       onPointerDown={(e) => onPointerDown(e, clip, null)}
       data-clip={clip.id}
@@ -193,7 +242,20 @@ export function ClipView({
       {(kind === "video" || kind === "image") && <span {...stylex.props(styles.shade)} />}
       <span {...stylex.props(styles.label)}>
         {clip.type === "text" && <span {...stylex.props(styles.titleGlyph)}>T</span>}
-        {label}
+        {clip.type === "adjustment" && (
+          <span {...stylex.props(styles.adjustmentName)}>Adjustment</span>
+        )}
+        {enabledEffects.length > 0 && (
+          <span
+            title={`Effects: ${effectNames(project, enabledEffects).join(", ")}`}
+            {...stylex.props(styles.fx)}
+          >
+            fx
+          </span>
+        )}
+        <span {...stylex.props(clip.type === "adjustment" && styles.adjustmentEffects)}>
+          {label}
+        </span>
       </span>
       {clip.fadeIn > 0 && (
         <span
@@ -206,6 +268,24 @@ export function ClipView({
             styles.fade,
             styles.fadeOut,
             styles.fadeWidth(timeToX(clip.fadeOut, pps)),
+          )}
+        />
+      )}
+      {clip.animationIn && (
+        <span
+          {...stylex.props(
+            styles.fade,
+            styles.animationIn,
+            styles.fadeWidth(rampWidth(clip.animationIn.duration)),
+          )}
+        />
+      )}
+      {clip.animationOut && (
+        <span
+          {...stylex.props(
+            styles.fade,
+            styles.animationOut,
+            styles.fadeWidth(rampWidth(clip.animationOut.duration)),
           )}
         />
       )}

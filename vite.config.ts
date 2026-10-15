@@ -46,6 +46,13 @@ export default defineConfig({
         // in the lazily loaded export dialog instead of the startup bundle.
         codeSplitting: {
           groups: [
+            // Shader sources: their own cache-stable chunk.
+            { name: "effects-library", test: /src[\\/]effects[\\/]library[\\/]/ },
+            // The GLSL grammar only loads with the Effect Studio.
+            {
+              name: "glsl",
+              test: /node_modules[\\/](@codemirror[\\/]lang-cpp|@lezer[\\/]cpp)[\\/]/,
+            },
             { name: "react", test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/ },
             {
               name: "codemirror",

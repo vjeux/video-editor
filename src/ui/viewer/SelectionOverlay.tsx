@@ -7,6 +7,7 @@ import type { Clip, Transform } from "../../core/types";
 import { useEditor } from "../../store";
 import { useGestureKey } from "../gesture";
 import { colors } from "../theme/tokens.stylex";
+import { useFontsVersion } from "./use-fonts-version";
 import { boxOf, contains, rotateAbout, scaleAbout, snapOffset, type Point } from "./layer-box";
 
 const SNAP_PX = 12;
@@ -112,13 +113,14 @@ export function SelectionOverlay({
 }) {
   const overlay = useRef<HTMLDivElement>(null);
   const project = useEditor((s) => s.project);
+  const fontsVersion = useFontsVersion();
   const playhead = useEditor((s) => s.playhead);
   const selection = useEditor((s) => s.selection);
   const select = useEditor((s) => s.select);
   const gesture = useGestureKey("viewer");
   const layers = visualLayers(project, playhead);
   const selected = layers.find((c) => selection.length === 1 && c.id === selection[0]);
-  const box = selected ? boxOf(project, selected) : null;
+  const box = selected ? boxOf(project, selected, fontsVersion) : null;
   const isLocked = (clip: Clip) =>
     project.tracks.find((t) => t.id === clip.trackId)?.locked ?? false;
 
@@ -135,7 +137,7 @@ export function SelectionOverlay({
     ev: PointerEvent,
   ): Partial<Transform> => {
     const start = clip.transform;
-    const b = boxOf(project, clip);
+    const b = boxOf(project, clip, fontsVersion);
     if (mode === "scale" && b) return { scale: scaleAbout(b, start.scale, origin, p, ev.shiftKey) };
     if (mode === "rotate" && b)
       return { rotation: rotateAbout(b, start.rotation, origin, p, ev.shiftKey) };
@@ -179,7 +181,7 @@ export function SelectionOverlay({
         const p = toProject(e.clientX, e.clientY);
         if (!p) return;
         const hit = layers.toReversed().find((clip) => {
-          const b = boxOf(project, clip);
+          const b = boxOf(project, clip, fontsVersion);
           return b && contains(b, p.x, p.y);
         });
         select(hit ? [hit.id] : []);
@@ -190,7 +192,7 @@ export function SelectionOverlay({
         const hit =
           p &&
           layers.toReversed().find((clip) => {
-            const b = boxOf(project, clip);
+            const b = boxOf(project, clip, fontsVersion);
             return b && contains(b, p.x, p.y);
           });
         if (hit) openMenu(e, clipMenu(hit.id, playhead));

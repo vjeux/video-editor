@@ -15,7 +15,7 @@ export class Player {
   private readonly media: MediaLibrary;
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
-  private nodes: AudioBufferSourceNode[] = [];
+  private nodes: AudioScheduledSourceNode[] = [];
   private anchor: { ctxTime: number; time: number } | null = null;
   private buffers = new Map<Id, AudioBuffer | null>();
   private project: Project | null = null;

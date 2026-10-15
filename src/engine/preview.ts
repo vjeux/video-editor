@@ -1,7 +1,10 @@
-import { sourceTimeAt, visualLayers } from "../core/timeline";
+import { layerClips, layersAt } from "../core/layers";
+import { frameSourceTime } from "../core/timeline";
 import type { Id, MediaClip, Project } from "../core/types";
-import { renderFrame, type Ctx2D, type Drawable } from "./compositor";
+import { resolveEffect } from "../effects/resolve";
+import { renderFrame, ScratchCanvases, type Ctx2D, type Drawable } from "./compositor";
 import { FrameStream } from "./frame-stream";
+import { createGpu } from "./gpu";
 import type { MediaLibrary } from "./media-library";
 
 /** Clips starting this soon get their decoder warmed up so cuts land on time. */
@@ -13,10 +16,13 @@ export class PreviewRenderer {
   private readonly onFrame: () => void;
   private streams = new Map<Id, { assetId: Id; stream: FrameStream }>();
   private used = new Set<Id>();
+  private readonly gpu: ReturnType<typeof createGpu>;
+  private readonly scratch = new ScratchCanvases();
 
-  constructor(media: MediaLibrary, onFrame: () => void) {
+  constructor(media: MediaLibrary, onFrame: () => void, onError: (error: Error) => void) {
     this.media = media;
     this.onFrame = onFrame;
+    this.gpu = createGpu(onError);
   }
 
   private frame(clip: MediaClip, sourceTime: number): Drawable | null {
@@ -36,12 +42,18 @@ export class PreviewRenderer {
 
   render(ctx: Ctx2D, project: Project, t: number, playing: boolean) {
     this.used.clear();
-    renderFrame(ctx, project, t, (clip, sourceTime) => this.frame(clip, sourceTime));
+    renderFrame(ctx, project, t, {
+      frames: (clip, sourceTime) => this.frame(clip, sourceTime),
+      gpu: this.gpu,
+      resolve: (id) => resolveEffect(project, id),
+      scratch: this.scratch,
+    });
 
     if (playing) {
-      for (const clip of visualLayers(project, t + PREWARM)) {
+      const soon = t + PREWARM;
+      for (const clip of layersAt(project, soon).flatMap(layerClips)) {
         if (clip.type === "media" && clip.start > t)
-          this.frame(clip, sourceTimeAt(clip, clip.start));
+          this.frame(clip, frameSourceTime(project, clip, soon));
       }
     }
 

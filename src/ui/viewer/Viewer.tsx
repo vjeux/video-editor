@@ -13,6 +13,9 @@ import { Transport } from "./Transport";
 
 const STAGE_PAD = 16;
 
+/** Upper bound for the preview canvas width in device pixels. */
+const MAX_PREVIEW_WIDTH = 3840;
+
 const styles = stylex.create({
   viewer: {
     height: "100%",
@@ -104,7 +107,9 @@ export function Viewer() {
     const c = canvas.current;
     if (!c || rect.width === 0) return;
     const dpr = window.devicePixelRatio || 1;
-    c.width = Math.round(Math.min(settings.width, rect.width * dpr));
+    // Render at the display's device pixels (not the project width) so text and
+    // vector shapes stay crisp on HiDPI screens; capped at 4K for memory.
+    c.width = Math.round(Math.min(MAX_PREVIEW_WIDTH, rect.width * dpr));
     c.height = Math.round(c.width * (settings.height / settings.width));
   }, [rect.width, settings.width, settings.height]);
 

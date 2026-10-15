@@ -1,5 +1,17 @@
+import { addEffect } from "../core/effects";
 import { createMediaClip } from "../core/factories";
-import { canPlace, placeClip, removeAsset, trackEnd } from "../core/timeline";
+import { layerClips, layersAt } from "../core/layers";
+import {
+  canPlace,
+  frameSourceTime,
+  insertGap,
+  placeClip,
+  removeAsset,
+  splitClip,
+  trackEnd,
+} from "../core/timeline";
+import { BUILTIN_EFFECTS } from "../effects/library";
+import { noticeStore } from "../store/notices";
 import { trackFor } from "../core/tracks";
 import type { Asset, Id, Project } from "../core/types";
 import { saveMedia } from "../engine/persistence";
@@ -125,4 +137,59 @@ export async function importFiles(files: Iterable<File>, place?: { trackId?: Id;
 export function deleteAsset(assetId: Id) {
   editorStore.getState().commit((p) => removeAsset(p, assetId));
   player.forget(assetId);
+}
+
+/**
+ * Freezes the frame under the playhead: splits the shot, ripples the rest
+ * of its track later by `duration`, and drops in a full-resolution still
+ * with a gentle push-in (the freeze-and-zoom combo editors use for emphasis).
+ */
+export async function freezeFrame(duration = 1.5, zoom = true) {
+  const { project, playhead, selection } = editorStore.getState();
+  const candidates = layersAt(project, playhead)
+    .flatMap(layerClips)
+    .filter((c) => c.type === "media" && project.assets[c.assetId]?.kind === "video");
+  const clip = candidates.find((c) => selection.includes(c.id)) ?? candidates.at(-1);
+  if (clip?.type !== "media") {
+    noticeStore.getState().push("info", "Put the playhead over a video clip to freeze a frame");
+    return;
+  }
+  const source = project.assets[clip.assetId];
+  const blob = await media.stillAt(clip.assetId, frameSourceTime(project, clip, playhead));
+  const file = new File([blob], `${source?.name.replace(/\.[^.]+$/, "") ?? "frame"} freeze.png`, {
+    type: "image/png",
+  });
+  const id = newId();
+  const probe = await media.load(id, file);
+  const asset: Asset = { id, name: file.name, ...probe };
+  void saveMedia(id, file).catch(reportError);
+  void hydrate(asset).catch(reportError);
+
+  const stillId = newId();
+  editorStore.getState().commit((p) => {
+    const withAsset = { ...p, assets: { ...p.assets, [id]: asset } };
+    const opened = insertGap(
+      splitClip(withAsset, clip.id, playhead, newId),
+      clip.trackId,
+      playhead,
+      duration,
+    );
+    const still = {
+      ...createMediaClip(asset, { id: stillId, trackId: clip.trackId, start: playhead }),
+      duration,
+      transform: clip.transform,
+    };
+    const placed = placeClip(opened, still, newId);
+    const push = BUILTIN_EFFECTS["punch-zoom"];
+    if (!zoom || !push) return placed;
+    const zoomed = addEffect(placed, [stillId], push, newId);
+    const instance = zoomed.clips[stillId]?.effects.at(-1);
+    if (!instance) return zoomed;
+    const clipWithPush = zoomed.clips[stillId]!;
+    const effects = clipWithPush.effects.map((e) =>
+      e.id === instance.id ? { ...e, params: { ...e.params, style: 2, amount: 1.12 } } : e,
+    );
+    return { ...zoomed, clips: { ...zoomed.clips, [stillId]: { ...clipWithPush, effects } } };
+  });
+  editorStore.getState().select([stillId]);
 }

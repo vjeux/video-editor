@@ -17,10 +17,19 @@ import {
   type Quality,
   type WrappedCanvas,
 } from "mediabunny";
-import { audibleClips, projectDuration, sourceTimeAt, visualLayers } from "../core/timeline";
+import { layerClips, layersAt } from "../core/layers";
+import { audibleClips, frameSourceTime, projectDuration } from "../core/timeline";
 import type { Id, MediaClip, Project } from "../core/types";
 import { scheduleAudio } from "./audio-graph";
-import { fontFor, renderFrame, type Drawable } from "./compositor";
+import { resolveEffect } from "../effects/resolve";
+import {
+  fontFor,
+  renderFrame,
+  ScratchCanvases,
+  type Drawable,
+  type RenderServices,
+} from "./compositor";
+import { createGpu } from "./gpu";
 import type { MediaLibrary } from "./media-library";
 
 export type ExportFormat = "mp4" | "webm";
@@ -73,11 +82,11 @@ class ExportFrames {
     this.media = media;
     const plans = new Map<Id, { track: InputVideoTrack; times: number[] }>();
     for (const t of frameTimes) {
-      for (const clip of visualLayers(project, t)) {
+      for (const clip of layersAt(project, t).flatMap(layerClips)) {
         const track = clip.type === "media" ? media.videoTrack(clip.assetId) : null;
         if (!track || clip.type !== "media") continue;
         const plan = plans.get(clip.id) ?? { track, times: [] };
-        plan.times.push(sourceTimeAt(clip, t));
+        plan.times.push(frameSourceTime(project, clip, t));
         plans.set(clip.id, plan);
       }
     }
@@ -88,7 +97,7 @@ class ExportFrames {
 
   /** Advances every clip visible at `t` by one frame. */
   async advance(t: number) {
-    for (const clip of visualLayers(this.project, t)) {
+    for (const clip of layersAt(this.project, t).flatMap(layerClips)) {
       const iterator = this.iterators.get(clip.id);
       if (!iterator) continue;
       const result = await iterator.next();
@@ -188,13 +197,22 @@ export async function exportProject(
   const frameCount = Math.ceil(duration * fps);
   const frameTimes = Array.from({ length: frameCount }, (_, i) => i / fps);
   const frames = new ExportFrames(project, media, frameTimes);
+  const gpuErrors: Error[] = [];
+  const services: RenderServices = {
+    frames: frames.lookup,
+    gpu: createGpu((error) => gpuErrors.push(error)),
+    resolve: (id) => resolveEffect(project, id),
+    scratch: new ScratchCanvases(),
+  };
   let audioWritten = 0;
 
   try {
     for (const [i, t] of frameTimes.entries()) {
       if (opts.signal.aborted) throw new DOMException("Export canceled", "AbortError");
       await frames.advance(t);
-      renderFrame(ctx, project, t, frames.lookup);
+      renderFrame(ctx, project, t, services);
+      // A shader that fails to compile would otherwise export silently unfiltered.
+      if (gpuErrors[0]) throw gpuErrors[0];
       await video.add(t, 1 / fps);
 
       while (audio && mix && audioWritten <= t && audioWritten < duration) {

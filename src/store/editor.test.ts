@@ -68,3 +68,23 @@ describe("load", () => {
     expect(store.getState().past).toHaveLength(0);
   });
 });
+
+describe("transition focus", () => {
+  it("focuses a transition instead of clips, and clears when clips are selected", () => {
+    store.getState().select(["a"]);
+    store.getState().focusTransition("b");
+    expect(store.getState().selection).toEqual([]);
+    expect(store.getState().focusedTransition).toBe("b");
+    store.getState().select(["a"]);
+    expect(store.getState().focusedTransition).toBeNull();
+  });
+
+  it("drops the focus when its clip disappears", () => {
+    store.getState().focusTransition("b");
+    store.getState().commit((p) => {
+      const { b: _b, ...clips } = p.clips;
+      return { ...p, clips };
+    });
+    expect(store.getState().focusedTransition).toBeNull();
+  });
+});

@@ -1,4 +1,5 @@
 import { TRACK_ACCEPTS } from "./factories";
+import { rampSourceTime } from "./speed-ramps";
 import type { Clip, ClipKind, Id, IdFactory, MediaClip, Project, Seconds, Track } from "./types";
 
 /** Clip edges closer than this are considered touching (absorbs float error). */
@@ -19,7 +20,7 @@ export function findClip(project: Project, id: Id): Clip {
 }
 
 export function clipKind(project: Project, clip: Clip): ClipKind {
-  if (clip.type === "text") return "text";
+  if (clip.type !== "media") return clip.type;
   const asset = project.assets[clip.assetId];
   if (!asset) throw new Error(`Clip ${clip.id} references missing asset ${clip.assetId}`);
   return asset.kind;
@@ -40,13 +41,42 @@ export function clipsOnTrack(project: Project, trackId: Id): Clip[] {
 const rate = (clip: Clip) => (clip.type === "media" ? clip.speed : 0);
 
 /** Moves the clip's start edge, keeping its end fixed and its source in sync. */
+/**
+ * A ramped clip whose edges move is baked to the constant speed that covers
+ * the same source, so the cut stays seamless (the curve no longer fits).
+ */
+function bakeRamp(clip: MediaClip, start: Seconds, end: Seconds): MediaClip {
+  const offset = sourceTimeAt(clip, start);
+  const duration = end - start;
+  const speed = duration > 0 ? (sourceTimeAt(clip, end) - offset) / duration : clip.speed;
+  return { ...clip, start, duration, offset, speed, speedRamp: null };
+}
+
 function withStart(clip: Clip, start: Seconds): Clip {
+  if (clip.type === "media" && clip.speedRamp) return bakeRamp(clip, start, clipEnd(clip));
   const delta = start - clip.start;
   const moved = { ...clip, start, duration: clip.duration - delta };
   return moved.type === "media" ? { ...moved, offset: moved.offset + delta * rate(clip) } : moved;
 }
 
-const withEnd = (clip: Clip, end: Seconds): Clip => ({ ...clip, duration: end - clip.start });
+const withEnd = (clip: Clip, end: Seconds): Clip =>
+  clip.type === "media" && clip.speedRamp
+    ? bakeRamp(clip, clip.start, end)
+    : { ...clip, duration: end - clip.start };
+
+/** The half before a cut keeps how the clip enters; the half after keeps how it leaves. */
+const leftPart = (clip: Clip, at: Seconds): Clip => ({
+  ...withEnd(clip, at),
+  fadeOut: 0,
+  animationOut: null,
+});
+const rightPart = (clip: Clip, at: Seconds, id: Id): Clip => ({
+  ...withStart(clip, at),
+  id,
+  fadeIn: 0,
+  animationIn: null,
+  transitionIn: null,
+});
 
 function setClips(project: Project, remove: readonly Id[], put: readonly Clip[]): Project {
   const clips = { ...project.clips };
@@ -83,10 +113,7 @@ export function placeClip(project: Project, clip: Clip, newId: IdFactory): Proje
     } else if (coversTail) {
       put.push(withEnd(other, start));
     } else {
-      put.push(
-        { ...withEnd(other, start), fadeOut: 0 },
-        { ...withStart(other, end), id: newId(), fadeIn: 0 },
-      );
+      put.push(leftPart(other, start), rightPart(other, end, newId()));
     }
   }
   return setClips(project, removed, put);
@@ -102,7 +129,7 @@ export function moveClip(
 }
 
 export function maxClipDuration(project: Project, clip: Clip): Seconds {
-  if (clip.type === "text") return Infinity;
+  if (clip.type !== "media") return Infinity;
   const duration = project.assets[clip.assetId]?.duration;
   if (duration == null) return Infinity;
   return (duration - clip.offset) / clip.speed;
@@ -135,8 +162,8 @@ export function trimClip(project: Project, id: Id, edge: "start" | "end", time: 
 export function splitClip(project: Project, id: Id, time: Seconds, newId: IdFactory): Project {
   const clip = findClip(project, id);
   if (time <= clip.start + EPSILON || time >= clipEnd(clip) - EPSILON) return project;
-  const left = { ...withEnd(clip, time), fadeOut: 0 };
-  const right = { ...withStart(clip, time), id: newId(), fadeIn: 0 };
+  const left = leftPart(clip, time);
+  const right = rightPart(clip, time, newId());
   return setClips(project, [], [left, right]);
 }
 
@@ -226,7 +253,7 @@ export function snapCandidates(
 }
 
 export const sourceTimeAt = (clip: MediaClip, t: Seconds): Seconds =>
-  clip.offset + (t - clip.start) * clip.speed;
+  rampSourceTime(clip, t) ?? clip.offset + (t - clip.start) * clip.speed;
 
 /** Retimes a media clip over the same source span, bounded by its neighbours and source. */
 export function setClipSpeed(project: Project, id: Id, speed: number): Project {
@@ -283,4 +310,25 @@ export function fillScale(project: Project, clip: Clip): number {
   const contain = Math.min(width / asset.width, height / asset.height);
   const cover = Math.max(width / asset.width, height / asset.height);
   return cover / contain;
+}
+
+/** Last decodable instant of a source: a hair before its end. */
+const SOURCE_END_MARGIN = 1 / 120;
+
+/**
+ * Source time to show for a clip at `t`, which may lie outside the clip
+ * (transitions extend both sides of a cut), clamped to the media.
+ */
+export function frameSourceTime(project: Project, clip: MediaClip, t: Seconds): Seconds {
+  const duration = project.assets[clip.assetId]?.duration;
+  const end = duration == null ? Infinity : Math.max(0, duration - SOURCE_END_MARGIN);
+  return Math.min(end, Math.max(0, sourceTimeAt(clip, t)));
+}
+
+/** Ripple insert: shifts every clip on `trackId` starting at or after `at` by `duration`. */
+export function insertGap(project: Project, trackId: Id, at: Seconds, duration: Seconds): Project {
+  const moved = clipsOnTrack(project, trackId)
+    .filter((c) => c.start >= at - EPSILON)
+    .map((c) => ({ ...c, start: c.start + duration }));
+  return setClips(project, [], moved);
 }
