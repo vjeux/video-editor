@@ -15,6 +15,7 @@ import {
   removeSpans,
   silencesInClip,
   spansLength,
+  suggestThreshold,
   type SilenceOptions,
 } from "./silences";
 import type { MediaClip } from "./types";
@@ -120,5 +121,17 @@ describe("removeSpans", () => {
         { start: 6, end: 8 },
       ]),
     ).toBe(3);
+  });
+});
+
+describe("suggestThreshold", () => {
+  it("sits between the noise floor and the speech level", () => {
+    const levels = Float32Array.from({ length: 100 }, (_, i) => (i % 2 ? -20 : -70));
+    expect(suggestThreshold(levels)).toBe(-55);
+  });
+
+  it("stays within a sensible range", () => {
+    expect(suggestThreshold(new Float32Array(50).fill(-100))).toBe(-60);
+    expect(suggestThreshold(new Float32Array(50).fill(-6))).toBe(-20);
   });
 });

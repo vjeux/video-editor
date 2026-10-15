@@ -125,3 +125,7 @@ export function removeSpans(
 
 export const spansLength = (spans: readonly Span[]): Seconds =>
   clean(spans.reduce((sum, s) => sum + s.end - s.start, 0));
+
+export function suggestThreshold(_levels: Float32Array): number {
+  throw new Error("Not implemented");
+}
