@@ -218,6 +218,23 @@ describe("migrateProject", () => {
     expect(migrateProject(v2)).toEqual(current);
   });
 
+  it("repairs current-version projects whose clips were written by older code", () => {
+    const current = withClips(twoClips(), textClip("t", 0, 2));
+    const damaged = JSON.parse(JSON.stringify(current)) as {
+      clips: Record<string, Record<string, unknown> & { style?: Record<string, unknown> }>;
+    };
+    for (const clip of Object.values(damaged.clips)) {
+      delete clip.effects;
+      delete clip.transitionIn;
+      delete clip.animationLoop;
+      delete clip.audioEffects;
+      delete clip.speedRamp;
+      delete clip.style?.stroke;
+    }
+    delete (damaged as Record<string, unknown>).customEffects;
+    expect(migrateProject(damaged)).toEqual(current);
+  });
+
   it("rejects unknown data", () => {
     expect(() => migrateProject({ version: 99 })).toThrow(/version/);
   });
