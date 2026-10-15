@@ -22,7 +22,7 @@ const styles = stylex.create({
     cursor: "pointer",
   },
   fill: (color: string) => ({ backgroundColor: color }),
-  on: { boxShadow: `0 0 0 2px ${colors.panel}, 0 0 0 3.5px ${colors.accent}` },
+  on: { boxShadow: `inset 0 0 0 2px ${colors.accent}, inset 0 0 0 3.5px ${colors.panel}` },
   picker: {
     position: "relative",
     overflow: "hidden",

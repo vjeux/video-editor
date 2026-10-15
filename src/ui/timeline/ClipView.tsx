@@ -28,18 +28,18 @@ const styles = stylex.create({
   at: (left: number, width: number) => ({ left, width }),
   blade: { cursor: "crosshair" },
   selected: {
-    boxShadow: `0 0 0 2px #fff, 0 0 0 4px ${colors.accent}`,
+    boxShadow: `inset 0 0 0 2px ${colors.accent}, inset 0 0 0 3.5px #fff`,
     zIndex: 2,
   },
   ghost: {
     opacity: 0.85,
     zIndex: 4,
     pointerEvents: "none",
-    boxShadow: `0 0 0 2px ${colors.accent2}, 0 10px 24px rgba(0, 0, 0, 0.5)`,
+    boxShadow: `inset 0 0 0 2px ${colors.accent2}, 0 10px 24px rgba(0, 0, 0, 0.5)`,
   },
-  invalid: { boxShadow: `0 0 0 2px ${colors.danger}` },
+  invalid: { boxShadow: `inset 0 0 0 2px ${colors.danger}` },
   target: {
-    boxShadow: `0 0 0 2px ${colors.pink}, 0 0 12px ${colors.pink}`,
+    boxShadow: `inset 0 0 0 2px ${colors.pink}, inset 0 0 14px ${colors.pink}`,
     filter: "brightness(1.2)",
     zIndex: 2,
   },

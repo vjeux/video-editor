@@ -12,7 +12,7 @@ import { Group } from "./Group";
 
 const styles = stylex.create({
   zone: { borderRadius: radii.md, transition: "box-shadow 0.15s" },
-  dropping: { boxShadow: `0 0 0 2px ${colors.accent}`, backgroundColor: colors.accentSoft },
+  dropping: { boxShadow: `inset 0 0 0 2px ${colors.accent}`, backgroundColor: colors.accentSoft },
   stack: { margin: 0, padding: 0 },
   empty: {
     margin: 0,

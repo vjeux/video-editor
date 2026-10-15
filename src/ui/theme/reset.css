@@ -34,7 +34,8 @@
 }
 :where(:focus-visible) {
   outline: 2px solid #7c6cff;
-  outline-offset: 1px;
+  /* Drawn inside the element so scrolling or clipped panels never cut it off. */
+  outline-offset: -2px;
 }
 ::-webkit-scrollbar {
   width: 10px;

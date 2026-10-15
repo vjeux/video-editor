@@ -25,7 +25,10 @@ const styles = stylex.create({
     borderWidth: 1,
     borderStyle: "solid",
     borderColor: { default: colors.line, [stylex.when.ancestor(":hover")]: colors.line2 },
-    boxShadow: { default: "none", [stylex.when.ancestor(":hover")]: `0 0 0 1px ${colors.accent}` },
+    boxShadow: {
+      default: "none",
+      [stylex.when.ancestor(":hover")]: `inset 0 0 0 1.5px ${colors.accent}`,
+    },
     backgroundColor: colors.bg,
   },
   badge: {

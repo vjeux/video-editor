@@ -33,7 +33,7 @@ const styles = stylex.create({
   at: (left: number, width: number) => ({ left, width }),
   selected: {
     borderColor: "#fff",
-    boxShadow: `0 0 0 2px ${colors.accent}, 0 1px 4px rgba(0, 0, 0, 0.45)`,
+    boxShadow: `inset 0 0 0 2px ${colors.accent}, 0 1px 4px rgba(0, 0, 0, 0.45)`,
   },
   icon: { flexShrink: 0, pointerEvents: "none" },
 });
