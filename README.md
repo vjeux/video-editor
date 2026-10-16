@@ -190,6 +190,40 @@ vp dev --port 5199
 node bench/long-media.mjs --minutes 10,30,60 --large --out bench/results/run.json
 ```
 
+## Long and large media
+
+Nothing in Cutline holds a whole file or a whole export in memory: video and
+sound are decoded in streams, exports in Chrome and Edge are written straight
+to disk, and source files are disk-backed Blobs. Peak renderer memory measured
+with `bench/long-media.mjs` in headless Chromium (256×144 15 fps H.264 with
+stereo AAC; the large file is 5 minutes of 720p noise at 40 Mb/s, 1.4 GB):
+
+| Media        | Import (before → after) | Export          | Open `.cutline` |
+| ------------ | ----------------------- | --------------- | --------------- |
+| 10 min       | 832 MB → 424 MB         | 899 MB → 518 MB | 1.3 GB → 466 MB |
+| 30 min       | 1.7 GB → 443 MB         | 1.8 GB → 466 MB | 2.5 GB → 518 MB |
+| 60 min       | 2.0 GB → 471 MB         | 2.8 GB → 543 MB | 3.9 GB → 545 MB |
+| 90 min       | 2.6 GB → 489 MB         | 2.7 GB → 598 MB | 4.0 GB → 522 MB |
+| 1.4 GB, 720p | 566 MB → 424 MB         | — → 504 MB      | 814 MB → 471 MB |
+
+Every export reads back with exactly `ceil(duration × fps)` frames and the full
+audio length. Raw numbers are in `bench/results/`. What still bounds you:
+
+- **Exports without a save picker.** Firefox and Safari have no
+  `showSaveFilePicker`, so the export is built in memory and then offered as a
+  download: it needs about twice the output size in RAM.
+- **Browser storage.** Each imported file, and each file in an opened
+  `.cutline`, is copied into IndexedDB so it survives a reload. The copy needs
+  free quota (Chrome allows up to about 60% of free disk; Firefox and Safari
+  less) and the same disk space again. Files that don't fit still work until
+  the tab closes, and a notice says so.
+- **Opened projects read from their file.** Media in an opened `.cutline` is
+  read straight from that file, so keep it in place while you edit.
+- **What still grows with length** is small: the MP4 sample index of the
+  export (about 40 MB of JS heap per hour at 30 fps), waveforms (100 peaks a
+  second) and the silence envelope (100 levels a second), under 2 MB an hour
+  each.
+
 ## Keyboard shortcuts
 
 | Action                      | Keys                  |
