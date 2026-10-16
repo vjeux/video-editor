@@ -2,6 +2,8 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   addAudioEffect,
   AUDIO_EFFECTS,
+  audioTail,
+  MAX_AUDIO_TAIL,
   moveAudioEffect,
   removeAudioEffect,
   updateAudioEffect,
@@ -85,5 +87,35 @@ describe("audio effect stacks", () => {
     ]);
     project = removeAudioEffect(project, "m", second!.id);
     expect((project.clips.m as MediaClip).audioEffects.map((e) => e.effectId)).toEqual(["reverb"]);
+  });
+});
+
+describe("audioTail", () => {
+  const instance = (effectId: string, params = {}, enabled = true) => ({
+    id: effectId,
+    effectId,
+    enabled,
+    params,
+  });
+
+  it("is how long a stack keeps sounding after its input stops", () => {
+    expect(audioTail([])).toBe(0);
+    expect(audioTail([instance("eq")])).toBe(0);
+    expect(audioTail([instance("pitch")])).toBeCloseTo(0.1);
+    expect(audioTail([instance("reverb", { decay: 4, preDelay: 0.2 })])).toBeCloseTo(4.2);
+  });
+
+  it("follows an echo's feedback down to silence, within a bound", () => {
+    expect(audioTail([instance("echo", { time: 0.5, feedback: 0.5 })])).toBeCloseTo(5);
+    expect(audioTail([instance("echo", { time: 1.5, feedback: 0.9 })])).toBe(MAX_AUDIO_TAIL);
+  });
+
+  it("adds up through a chain and skips disabled effects", () => {
+    const stack = [
+      instance("reverb", { decay: 2, preDelay: 0 }),
+      instance("echo", { time: 0.1, feedback: 0 }),
+    ];
+    expect(audioTail(stack)).toBeCloseTo(2.1);
+    expect(audioTail([instance("reverb", { decay: 2 }, false)])).toBe(0);
   });
 });

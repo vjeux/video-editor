@@ -9,6 +9,7 @@ import {
   type InputVideoTrack,
 } from "mediabunny";
 import type { AssetKind, Id } from "../core/types";
+import { AudioReader } from "./audio-reader";
 
 export interface ProbeResult {
   kind: AssetKind;
@@ -60,7 +61,6 @@ async function playableTrack<T extends InputVideoTrack | InputAudioTrack>(track:
 /** Owns Mediabunny inputs and decoders for every imported file, keyed by asset id. */
 export class MediaLibrary {
   private entries = new Map<Id, Entry>();
-  private audioBuffers = new Map<Id, Promise<AudioBuffer | null>>();
 
   async load(id: Id, file: Blob): Promise<ProbeResult> {
     if (file.type.startsWith("image/")) {
@@ -177,16 +177,42 @@ export class MediaLibrary {
     });
   }
 
-  /** Whole-file decode into one AudioBuffer, shared by playback, export and waveforms. */
-  audioBuffer(id: Id): Promise<AudioBuffer | null> {
-    let pending = this.audioBuffers.get(id);
-    if (!pending) {
-      const entry = this.entries.get(id);
-      const track = entry && entry.kind !== "image" ? entry.audio : null;
-      pending = track ? decodeWholeTrack(track) : Promise.resolve(null);
-      this.audioBuffers.set(id, pending);
+  private audioTrack(id: Id): InputAudioTrack | null {
+    const entry = this.entries.get(id);
+    return entry && entry.kind !== "image" ? entry.audio : null;
+  }
+
+  /**
+   * Reads windows of the asset's sound in order (playback, export, captions);
+   * null when it has none. Nothing is decoded until the first read.
+   */
+  audioReader(id: Id): AudioReader | null {
+    const track = this.audioTrack(id);
+    return track && new AudioReader((from) => new AudioBufferSink(track).buffers(from));
+  }
+
+  /**
+   * Decodes the asset's whole sound once, chunk by chunk, handing `visit`
+   * each chunk's channels and the index of its first sample. Nothing is
+   * kept, so memory stays flat however long the file. False without sound.
+   */
+  async scanAudio(
+    id: Id,
+    visit: (channels: Float32Array[], at: number, sampleRate: number) => void,
+  ): Promise<boolean> {
+    const track = this.audioTrack(id);
+    if (!track) return false;
+    for await (const { buffer, timestamp } of new AudioBufferSink(track).buffers()) {
+      const at = Math.round(timestamp * buffer.sampleRate);
+      // Encoder priming can sit before zero; those samples are never heard.
+      const skip = Math.max(0, -at);
+      if (skip >= buffer.length) continue;
+      const channels = Array.from({ length: buffer.numberOfChannels }, (_, c) =>
+        buffer.getChannelData(c).subarray(skip),
+      );
+      visit(channels, at + skip, buffer.sampleRate);
     }
-    return pending;
+    return true;
   }
 
   /** Small evenly spaced frames for bin posters and timeline filmstrips. */
@@ -229,33 +255,5 @@ export class MediaLibrary {
     if (entry?.kind === "image") entry.bitmap.close();
     else entry?.input.dispose();
     this.entries.delete(id);
-    this.audioBuffers.delete(id);
   }
-}
-
-async function decodeWholeTrack(track: InputAudioTrack): Promise<AudioBuffer> {
-  const [sampleRate, channels] = await Promise.all([
-    track.getSampleRate(),
-    track.getNumberOfChannels(),
-  ]);
-  const chunks: { buffer: AudioBuffer; timestamp: number }[] = [];
-  for await (const { buffer, timestamp } of new AudioBufferSink(track).buffers()) {
-    chunks.push({ buffer, timestamp });
-  }
-  const end = chunks.reduce(
-    (max, c) => Math.max(max, Math.round(c.timestamp * sampleRate) + c.buffer.length),
-    0,
-  );
-  const whole = new AudioBuffer({
-    length: Math.max(1, end),
-    numberOfChannels: channels,
-    sampleRate,
-  });
-  for (const { buffer, timestamp } of chunks) {
-    const at = Math.max(0, Math.round(timestamp * sampleRate));
-    for (let ch = 0; ch < channels; ch++) {
-      whole.copyToChannel(buffer.getChannelData(Math.min(ch, buffer.numberOfChannels - 1)), ch, at);
-    }
-  }
-  return whole;
 }

@@ -2,11 +2,14 @@ import * as stylex from "@stylexjs/stylex";
 import { startTransition, useActionState, useEffect, useId, useRef, useState } from "react";
 import { media } from "../../app/engine";
 import { reportError } from "../../app/errors";
+import { canStreamToFile, chooseSaveFile } from "../../app/save-file";
+import { formatBytes } from "../../core/storage";
 import { formatFps, formatTimecode } from "../../core/time";
 import { projectDuration } from "../../core/timeline";
 import type { Project } from "../../core/types";
 import {
   encodableFormats,
+  EXPORT_FORMATS,
   exportFileName,
   exportProject,
   type ExportFormat,
@@ -47,7 +50,8 @@ interface OutputDetails {
 
 type Result =
   | { kind: "idle" }
-  | { kind: "done"; url: string; size: number; details: OutputDetails };
+  /** `saved`: streamed into a file the user chose; otherwise held for download. */
+  | { kind: "done"; url: string; size: number; details: OutputDetails; saved: boolean };
 
 type Command =
   | {
@@ -56,6 +60,7 @@ type Command =
       quality: ExportQuality;
       height: number;
       filename: string;
+      destination: FileSystemFileHandle | null;
     }
   | { type: "reset" };
 
@@ -66,12 +71,8 @@ interface Progress {
 
 const IDLE: Result = { kind: "idle" };
 
-const formatBytes = (bytes: number) =>
-  bytes >= 1e9
-    ? `${(bytes / 1e9).toFixed(2)} GB`
-    : bytes >= 1e6
-      ? `${(bytes / 1e6).toFixed(1)} MB`
-      : `${Math.max(1, Math.round(bytes / 1e3))} KB`;
+/** Past this, an export built in memory (no save picker) risks not fitting. */
+const LONG_IN_MEMORY_EXPORT = 15 * 60;
 
 function outputDetails(project: Project, height: number, filename: string): OutputDetails {
   const h = Math.max(2, Math.round(height / 2) * 2);
@@ -211,10 +212,14 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
       const startedAt = performance.now();
       setProgress({ progress: 0, eta: null });
       const source = editorStore.getState().project;
-      const details = outputDetails(source, command.height, command.filename);
+      const details = outputDetails(
+        source,
+        command.height,
+        command.destination?.name ?? command.filename,
+      );
       setActiveOutput(details);
       try {
-        const blob = await exportProject(source, media, {
+        const result = await exportProject(source, media, {
           ...command,
           signal: controller.signal,
           onProgress: (p) => {
@@ -222,11 +227,14 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
             setProgress({ progress: p, eta: p > 0.02 ? elapsed * ((1 - p) / p) : null });
           },
         });
+        // A saved file previews straight from disk.
+        const file = result.kind === "blob" ? result.blob : await command.destination!.getFile();
         return {
           kind: "done",
-          url: URL.createObjectURL(blob),
-          size: blob.size,
+          url: URL.createObjectURL(file),
+          size: file.size,
           details,
+          saved: result.kind === "file",
         };
       } catch (error) {
         reportError(error);
@@ -237,6 +245,18 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
   );
 
   const run = (command: Command) => startTransition(() => dispatch(command));
+  const start = async () => {
+    try {
+      const destination = await chooseSaveFile(filename, {
+        description: EXPORT_FORMATS[format].label,
+        mimeType: EXPORT_FORMATS[format].mimeType,
+      });
+      run({ type: "export", format, quality, height, filename, destination });
+    } catch (error) {
+      reportError(error);
+    }
+  };
+  const inMemoryWarning = !canStreamToFile() && duration > LONG_IN_MEMORY_EXPORT;
   const heights = [...new Set([settings.height, 2160, 1440, 1080, 720, 480])]
     .filter((h) => h <= Math.max(settings.height, 2160))
     .sort((a, b) => b - a);
@@ -254,10 +274,21 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
         <Button size="large" onClick={() => run({ type: "reset" })}>
           Export again
         </Button>
-        <Button size="large" variant="primary" href={result.url} download={result.details.filename}>
-          <Icon name="export" size={15} />
-          Download video
-        </Button>
+        {result.saved ? (
+          <Button size="large" variant="primary" onClick={onClose}>
+            Done
+          </Button>
+        ) : (
+          <Button
+            size="large"
+            variant="primary"
+            href={result.url}
+            download={result.details.filename}
+          >
+            <Icon name="export" size={15} />
+            Download video
+          </Button>
+        )}
       </>
     ) : exporting ? (
       <>
@@ -276,7 +307,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
         <Button
           size="large"
           variant="primary"
-          onClick={() => run({ type: "export", format, quality, height, filename })}
+          onClick={() => void start()}
           disabled={duration <= 0 || !supported?.[format]}
         >
           <Icon name="export" size={15} />
@@ -301,7 +332,9 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
       <div {...stylex.props(styles.content)}>
         <p {...stylex.props(styles.intro)}>
           {result.kind === "done"
-            ? "Your video is ready. Preview it below, then save it to your device."
+            ? result.saved
+              ? "Your video is saved. Preview it below."
+              : "Your video is ready. Preview it below, then save it to your device."
             : exporting
               ? "Turning your timeline into a finished video."
               : "Choose the format and quality for your finished video."}
@@ -336,7 +369,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
                 <>
                   <span {...stylex.props(styles.eyebrow)}>
                     {result.kind === "done"
-                      ? `${formatBytes(result.size)} · Ready to download`
+                      ? `${formatBytes(result.size)} · ${result.saved ? "Saved" : "Ready to download"}`
                       : "Output file"}
                   </span>
                   <span {...stylex.props(styles.filename)}>{output.filename}</span>
@@ -374,6 +407,12 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
               {!supported && (
                 <p role="status" {...stylex.props(styles.hint)}>
                   Checking available formats…
+                </p>
+              )}
+              {inMemoryWarning && (
+                <p role="note" {...stylex.props(styles.hint)}>
+                  This browser builds the video in memory before you can download it, so a long
+                  export may run out. Chrome and Edge save straight to disk instead.
                 </p>
               )}
               {supported && !supported.mp4 && !supported.webm && (

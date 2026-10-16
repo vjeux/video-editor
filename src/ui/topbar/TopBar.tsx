@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { useRef, useState } from "react";
 import { projectDuration } from "../../core/timeline";
-import { openFiles, saveProjectFile } from "../../app/project-files";
+import { chooseAndOpen, openFiles, saveProjectFile } from "../../app/project-files";
 import { reportError } from "../../app/errors";
 import { useEditor } from "../../store";
 import { useSession } from "../../store/session";
@@ -105,7 +105,7 @@ export function TopBar({
       icon: "folder",
       shortcut: `${mod}O`,
       disabled: !!busy,
-      run: () => input.current?.click(),
+      run: () => void chooseAndOpen(input.current).catch(reportError),
     },
     {
       kind: "item",

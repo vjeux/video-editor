@@ -10,6 +10,7 @@ import { FilterChips } from "./FilterChips";
 import { matchesMedia, type MediaFilter } from "./filters";
 import { ImportDropZone } from "./ImportDropZone";
 import { ImportingCard } from "./ImportingCard";
+import { ReconnectBanner } from "./ReconnectBanner";
 import { SearchBox } from "./SearchBox";
 
 const styles = stylex.create({
@@ -95,6 +96,7 @@ export function MediaBin() {
         </span>
       </PanelHeader>
       <ImportDropZone expanded={all.length === 0} />
+      <ReconnectBanner />
       {all.length > 0 && (
         <>
           <SearchBox value={query} onChange={setQuery} />

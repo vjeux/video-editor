@@ -12,6 +12,7 @@ import {
 import {
   detectSilences,
   levelEnvelope,
+  LevelStream,
   removeSpans,
   silencesInClip,
   spansLength,
@@ -133,5 +134,24 @@ describe("suggestThreshold", () => {
   it("stays within a sensible range", () => {
     expect(suggestThreshold(new Float32Array(50).fill(-100))).toBe(-60);
     expect(suggestThreshold(new Float32Array(50).fill(-6))).toBe(-20);
+  });
+});
+
+describe("LevelStream", () => {
+  const rate = 1000;
+  const signal = Float32Array.from(
+    { length: 2500 },
+    (_, i) => Math.sin(i * 0.3) * ((i % 400) / 400),
+  );
+
+  it("matches the whole-buffer envelope when fed in uneven chunks", () => {
+    const stream = new LevelStream(rate, 0.1);
+    for (let at = 0; at < signal.length; at += 333) {
+      stream.add([signal.subarray(at, at + 333)], at);
+    }
+    const levels = stream.levels();
+    const expected = levelEnvelope([signal], rate, 0.1);
+    expect(levels).toHaveLength(expected.length);
+    levels.forEach((level, i) => expect(level).toBeCloseTo(expected[i]!, 4));
   });
 });

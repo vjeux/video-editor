@@ -15,7 +15,12 @@ Built on [Mediabunny](https://mediabunny.dev/) + WebCodecs · React 19 · StyleX
 
 - **Everything stays on your device.** Decoding, preview and encoding use
   WebCodecs through Mediabunny. Projects and their media autosave to IndexedDB
-  and reopen on reload.
+  and reopen on reload. In Chrome and Edge, files you pick or drop are linked
+  where they are rather than copied, so even a huge file imports instantly; if
+  the browser locks them again after a reload, one **Reconnect** click brings
+  them back. Elsewhere (and for media inside an opened `.cutline`) files are
+  copied in after checking there is room; media that doesn't fit still works
+  until you close the tab, and a notice says it won't survive a reload.
 - **Portable projects.** Use **☰ → Save project** to download a `.cutline` bundle
   with the timeline, custom effects and original media. **Open** restores it or
   imports ordinary media files. The [versioned project format](docs/project-format.md)
@@ -77,7 +82,10 @@ Built on [Mediabunny](https://mediabunny.dev/) + WebCodecs · React 19 · StyleX
   8×, velocity speed ramps, freeze frames (`F`) and fade in/out.
 - **Export** to MP4 (H.264/AAC) or WebM (VP9/Opus) at any resolution. You get
   progress with an ETA, cancel, and an in-app preview, and the export can keep
-  running in the background.
+  running in the background. In Chrome and Edge you pick where to save first
+  and the video streams straight into that file as it encodes, so its length
+  is bounded by your disk, not memory; other browsers build it in memory and
+  offer a download.
 - **Scriptable.** Edit the timeline with JavaScript in a syntax-highlighted
   editor with API autocompletion. A whole script is one undo step.
 - **Marker import** from chapter lists, CSV/TSV, SRT/WebVTT subtitles and
@@ -172,6 +180,59 @@ Add `?perf` to the URL for a live playback overlay on the monitor: composites
 per second, render time, video lag behind the playhead, seeks and dropped
 frames.
 
+`bench/long-media.mjs` measures long and large media in headless Chromium
+(Playwright drives the dev server's own modules). It generates hour-long
+low-resolution videos and a 1.5 GB high-bitrate one in the page (cached in a
+throwaway profile under `node_modules/.cache`), then records peak JS heap,
+peak renderer memory and whether the tab survived for import, playback start,
+export (with the frame and audio counts read back from the file),
+`.cutline` save/open and a reload. `--import link` (the default) imports
+through the editor's file picker so files are linked where the browser
+allows it; `--import copy` hands over plain files, which are copied:
+
+```bash
+vp dev --port 5199
+node bench/long-media.mjs --minutes 10,30,60 --large --out bench/results/run.json
+```
+
+## Long and large media
+
+Nothing in Cutline holds a whole file or a whole export in memory: video and
+sound are decoded in streams, exports in Chrome and Edge are written straight
+to disk, and source files are disk-backed Blobs. Peak renderer memory measured
+with `bench/long-media.mjs` in headless Chromium (256×144 15 fps H.264 with
+stereo AAC; the large file is 5 minutes of 720p noise at 40 Mb/s, 1.4 GB):
+
+| Media        | Import (before → after) | Export          | Open `.cutline` |
+| ------------ | ----------------------- | --------------- | --------------- |
+| 10 min       | 832 MB → 424 MB         | 899 MB → 518 MB | 1.3 GB → 466 MB |
+| 30 min       | 1.7 GB → 443 MB         | 1.8 GB → 466 MB | 2.5 GB → 518 MB |
+| 60 min       | 2.0 GB → 471 MB         | 2.8 GB → 543 MB | 3.9 GB → 545 MB |
+| 90 min       | 2.6 GB → 489 MB         | 2.7 GB → 598 MB | 4.0 GB → 522 MB |
+| 1.4 GB, 720p | 566 MB → 424 MB         | — → 504 MB      | 814 MB → 471 MB |
+
+Every export reads back with exactly `ceil(duration × fps)` frames and the full
+audio length. Raw numbers are in `bench/results/`. What still bounds you:
+
+- **Exports without a save picker.** Firefox and Safari have no
+  `showSaveFilePicker`, so the export is built in memory and then offered as a
+  download: it needs about twice the output size in RAM.
+- **Copies where files can't be linked.** In Chrome and Edge, files you pick
+  or drop are linked by handle: storing the 1.4 GB file took 14 ms and no
+  storage, against 2.5 s and 1.4 GB more on disk for a copy. Linked files must
+  stay where they are (a moved or deleted file shows as missing), and the
+  browser may ask again for permission after a reload. Firefox and Safari, and
+  the media inside an opened `.cutline`, are copied into IndexedDB instead,
+  which needs free quota (Chrome allows up to about 60% of free disk; Firefox
+  and Safari less) and the same disk space again. Files that don't fit still
+  work until the tab closes, and a notice says so.
+- **Opened projects read from their file.** Media in an opened `.cutline` is
+  read straight from that file, so keep it in place while you edit.
+- **What still grows with length** is small: the MP4 sample index of the
+  export (about 40 MB of JS heap per hour at 30 fps), waveforms (100 peaks a
+  second) and the silence envelope (100 levels a second), under 2 MB an hour
+  each.
+
 ## Keyboard shortcuts
 
 | Action                      | Keys                  |
@@ -247,7 +308,7 @@ ui ──► app ──► store ──► core
 | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/core`    | Pure TypeScript. Holds the project model and every edit (overwrite placement, move, trim, split, ripple, speed, ramps, paste), effect stacks, transitions, In/Out/Loop animations, the audio-effect catalog, shader metadata and `.cube` parsing, versioned migrations, timecode, scripting and annotation parsing. Unit-tested without a browser.                                                                                                                                                                                     |
 | `src/effects` | The built-in shader library, written in the same uniform-comment format users import, plus effect lookup.                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `src/engine`  | The Mediabunny and Web API adapter. `MediaLibrary` probes files, holds preview sinks, decodes audio and makes thumbnails. `FrameStream` serves frames for scrubbing and sequential playback. One compositor serves preview and export: `GpuEffects` runs effect chains, transitions and LUTs on WebGL2, and adjustment layers filter what's below them. One audio scheduler, with each clip's Web Audio effect chain, serves both playback and the mixdown. Also holds the exporter and IndexedDB persistence.                         |
+| `src/engine`  | The Mediabunny and Web API adapter. `MediaLibrary` probes files, holds preview sinks, streams audio through `AudioReader` and makes thumbnails. `FrameStream` serves frames for scrubbing and sequential playback. One compositor serves preview and export: `GpuEffects` runs effect chains, transitions and LUTs on WebGL2, and adjustment layers filter what's below them. One audio scheduler, with each clip's Web Audio effect chain, serves both playback and the mixdown. Also holds the exporter and IndexedDB persistence.   |
 | `src/store`   | Zustand stores. The editor store owns the project behind a single `commit()` writer with undo/redo; continuous gestures coalesce into one step.                                                                                                                                                                                                                                                                                                                                                                                        |
 | `src/app`     | Commands that combine store and engine: import, the playback loop, keyboard and context-menu actions, session restore and autosave, and the single error-reporting seam.                                                                                                                                                                                                                                                                                                                                                               |
 | `src/ui`      | React 19 with the React Compiler, one component per file, styled with StyleX (tokens in `ui/theme/tokens.stylex.ts`). Controls in `ui/controls` share two surfaces (recessed wells, raised plates) and one portalled `Popover` behind menus and dropdowns; its placement and the slider/scrub math are pure, unit-tested helpers. Uses `use()` + Suspense for session restore and codec probing, `useActionState` for export and scripts, `<Activity>` for dialogs that keep their state, and `<ViewTransition>` for animated dialogs. |
@@ -256,6 +317,11 @@ Some design choices worth knowing:
 
 - **Playback follows the audio clock.** Video frames are pulled to the
   `AudioContext` time, so picture and sound cannot drift.
+- **Sound streams, it is never decoded whole.** Playback decodes each clip a
+  few seconds ahead and schedules it in one-second buffers. The export mixes
+  in 10-second windows, each rendered from slightly earlier so reverb and echo
+  tails carry across the joins. Waveforms, silence detection and captions
+  read the track chunk by chunk. Memory stays flat however long the media.
 - **Frame-accurate scrubbing.** Each visible clip keeps a Mediabunny iterator.
   Small forward moves decode through; big jumps restart it, and the latest
   request wins.

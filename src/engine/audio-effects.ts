@@ -11,6 +11,12 @@ interface Chain {
 export interface ChainTiming {
   start: number;
   stop: number;
+  /**
+   * How far into the clip `start` is, in seconds. Modulators start at this
+   * phase, so a clip sounds the same wherever playback or an export window
+   * picks it up.
+   */
+  elapsed: number;
 }
 
 type Builder = (ctx: BaseAudioContext, params: Params, timing: ChainTiming) => Chain;
@@ -89,6 +95,34 @@ function shaper(ctx: BaseAudioContext, drive: number) {
   return node;
 }
 
+/**
+ * Mulberry32: the same noise for every context, so a reverb rendered in
+ * separate export windows (or live) is one continuous room.
+ */
+function seededRandom(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** A sine oscillator that starts `elapsed` seconds into its cycle. */
+function sineFrom(ctx: BaseAudioContext, frequency: number, elapsed: number): OscillatorNode {
+  const phase = 2 * Math.PI * ((frequency * elapsed) % 1);
+  const oscillator = ctx.createOscillator();
+  oscillator.frequency.value = frequency;
+  oscillator.setPeriodicWave(
+    ctx.createPeriodicWave([0, Math.sin(phase)], [0, Math.cos(phase)], {
+      disableNormalization: true,
+    }),
+  );
+  return oscillator;
+}
+
 const impulses = new WeakMap<BaseAudioContext, Map<number, AudioBuffer>>();
 /** Exponentially decaying stereo noise: a small, convincing room. */
 function impulse(ctx: BaseAudioContext, decay: number): AudioBuffer {
@@ -101,7 +135,8 @@ function impulse(ctx: BaseAudioContext, decay: number): AudioBuffer {
   const buffer = ctx.createBuffer(2, length, ctx.sampleRate);
   for (let ch = 0; ch < 2; ch++) {
     const data = buffer.getChannelData(ch);
-    for (let i = 0; i < length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / length) ** 2.5;
+    const random = seededRandom(key * 1000 + ch);
+    for (let i = 0; i < length; i++) data[i] = (random() * 2 - 1) * (1 - i / length) ** 2.5;
   }
   perContext.set(key, buffer);
   return buffer;
@@ -145,7 +180,7 @@ const pitchShift: Builder = (ctx, params, timing) => {
     window.connect(fader.gain);
     input.connect(delay).connect(fader).connect(wet);
     for (const node of [sweep, window]) {
-      node.start(timing.start, phaseOffset * period);
+      node.start(timing.start, ((phaseOffset + timing.elapsed / period) % 1) * period);
       scheduled.push(node);
     }
   });
@@ -268,8 +303,7 @@ const BUILDERS: Record<string, Builder> = {
     const depth = num(p, "depth", 0.5);
     const amp = ctx.createGain();
     amp.gain.value = 1 - depth / 2;
-    const lfo = ctx.createOscillator();
-    lfo.frequency.value = num(p, "rate", 6);
+    const lfo = sineFrom(ctx, num(p, "rate", 6), timing.elapsed);
     const lfoDepth = ctx.createGain();
     lfoDepth.gain.value = depth / 2;
     lfo.connect(lfoDepth).connect(amp.gain);
@@ -279,8 +313,7 @@ const BUILDERS: Record<string, Builder> = {
   robot: (ctx, p, timing) => {
     const ring = ctx.createGain();
     ring.gain.value = 0;
-    const carrier = ctx.createOscillator();
-    carrier.frequency.value = num(p, "frequency", 50);
+    const carrier = sineFrom(ctx, num(p, "frequency", 50), timing.elapsed);
     carrier.connect(ring.gain);
     carrier.start(timing.start);
     const chain = withMix(ctx, { input: ring, output: ring }, num(p, "mix", 0.8));

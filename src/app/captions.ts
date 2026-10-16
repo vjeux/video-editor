@@ -38,7 +38,7 @@ export async function generateCaptions(
 ): Promise<number> {
   const clip = clipWithSound(state().project, request.clipId);
   if (!clip) throw new Error("Captions need a clip with sound");
-  const audio = await media.audioBuffer(clip.assetId);
+  const audio = media.audioReader(clip.assetId);
   if (!audio) throw new Error("This clip's audio could not be decoded");
 
   const range = {
@@ -50,7 +50,7 @@ export async function generateCaptions(
     language: request.language,
     signal,
     onProgress,
-  });
+  }).finally(() => audio.dispose());
   // The clip may have moved while transcribing: place words where it is now.
   const current = clipWithSound(state().project, request.clipId) ?? clip;
   const chunks = chunkCaptions(wordsOnTimeline(current, words), request.options);

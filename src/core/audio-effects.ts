@@ -139,6 +139,11 @@ function mapStack(
   return { ...project, clips: { ...project.clips, [clipId]: next } };
 }
 
+const num = (params: Params, key: string, fallback: number) => {
+  const value = params[key];
+  return typeof value === "number" ? value : fallback;
+};
+
 const defaults = (def: AudioEffectDefinition): Params =>
   Object.fromEntries(def.params.map((p) => [p.key, p.default]));
 
@@ -187,4 +192,36 @@ export function moveAudioEffect(project: Project, clipId: Id, id: Id, index: num
     rest.splice(Math.max(0, Math.min(index, rest.length)), 0, moving);
     return rest;
   });
+}
+
+/** Longest effect tail carried across export windows (a long, dense echo is cut here). */
+export const MAX_AUDIO_TAIL = 30;
+
+/** Below this an echo repeat is inaudible (-60 dB). */
+const SILENT = 1e-3;
+
+/**
+ * How long each effect keeps sounding after its input stops. Effects
+ * without an entry (EQ, filters, drive, modulation) have no audible tail.
+ */
+const TAILS: Readonly<Record<string, (params: Params) => number>> = {
+  reverb: (p) => num(p, "preDelay", 0.02) + num(p, "decay", 2),
+  echo: (p) => {
+    const time = num(p, "time", 0.3);
+    const feedback = Math.min(0.95, num(p, "feedback", 0.35));
+    return feedback > 0 ? time * Math.ceil(Math.log(SILENT) / Math.log(feedback)) : time;
+  },
+  compressor: (p) => num(p, "attack", 0.01) + num(p, "release", 0.2),
+  "voice-enhance": () => 1,
+  // The pitch shifter's read head trails its input by up to one sweep.
+  pitch: () => 0.1,
+};
+
+/** Seconds a clip's effect stack rings on after its sound ends, capped at `MAX_AUDIO_TAIL`. */
+export function audioTail(effects: readonly EffectInstance[]): number {
+  const tail = effects.reduce(
+    (sum, e) => sum + (e.enabled ? (TAILS[e.effectId]?.(e.params) ?? 0) : 0),
+    0,
+  );
+  return Math.min(MAX_AUDIO_TAIL, tail);
 }
