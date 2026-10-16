@@ -104,15 +104,28 @@ export async function generate(spec) {
   return { size: (await handle.getFile()).size, cached: false };
 }
 
+/**
+ * The editor's own instance of a module. After hot updates Vite serves
+ * modules with a `?t=` stamp, and a bare path would load a second copy
+ * with its own stores and engine.
+ */
+const load = (path) => {
+  const loaded = performance
+    .getEntriesByType("resource")
+    .map((e) => e.name)
+    .find((name) => new URL(name).pathname === path);
+  return import(/* @vite-ignore */ loaded ?? path);
+};
+
 const modules = async () => {
   const [assets, store, engine, playback, projectFiles, exporter, persistence] = await Promise.all([
-    import("/src/app/assets.ts"),
-    import("/src/store/index.ts"),
-    import("/src/app/engine.ts"),
-    import("/src/app/playback.ts"),
-    import("/src/app/project-files.ts"),
-    import("/src/engine/export.ts"),
-    import("/src/engine/persistence.ts"),
+    load("/src/app/assets.ts"),
+    load("/src/store/index.ts"),
+    load("/src/app/engine.ts"),
+    load("/src/app/playback.ts"),
+    load("/src/app/project-files.ts"),
+    load("/src/engine/export.ts"),
+    load("/src/engine/persistence.ts"),
   ]);
   return { assets, store, engine, playback, projectFiles, exporter, persistence };
 };
@@ -350,8 +363,8 @@ export async function clearOutputs(names) {
  */
 export async function mixCheck() {
   const m = await modules();
-  const graph = await import("/src/engine/audio-graph.ts");
-  const timeline = await import("/src/core/timeline.ts");
+  const graph = await load("/src/engine/audio-graph.ts");
+  const timeline = await load("/src/core/timeline.ts");
   const base = m.store.editorStore.getState().project;
   const clip = Object.values(base.clips).find((c) => c.type === "media");
   const effect = (effectId, params) => ({ id: effectId, effectId, enabled: true, params });

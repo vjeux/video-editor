@@ -167,9 +167,6 @@ async function runScenario(context, spec, steps) {
   if (!page.isClosed() && steps.includes("play")) {
     record(await measured(cdp, page, "play", () => call(page, "playMiddle", 5)));
   }
-  if (!page.isClosed() && steps.includes("mix-check")) {
-    record(await measured(cdp, page, "mix-check", () => call(page, "mixCheck")));
-  }
   if (!page.isClosed() && steps.includes("export")) {
     await call(page, "clearOutputs", ["bench-export.mp4"]);
     record(
@@ -204,11 +201,17 @@ async function runScenario(context, spec, steps) {
           call(page, "openProject", "#bench-open", timeout),
         ),
       );
-      rmSync(saved, { force: true });
     }
+  }
+  // Runs last: its whole-timeline reference render is the very thing that
+  // does not scale, so it is limited to short files.
+  if (!page.isClosed() && steps.includes("mix-check") && spec.seconds <= 600) {
+    record(await measured(cdp, page, "mix-check", () => call(page, "mixCheck")));
   }
   if (!page.isClosed()) record({ step: "storage", ...(await call(page, "storage")) });
   await page.close().catch(() => {});
+  // The opened project reads its media straight from this file until now.
+  rmSync(join(tmpdir(), `cutline-bench-${spec.name}.cutline`), { force: true });
   return results;
 }
 
@@ -248,11 +251,7 @@ const context = await chromium.launchPersistentContext(PROFILE, {
 });
 const all = [];
 try {
-  for (const spec of specs) {
-    // A large file's steps run without the long-file export, which the long files cover.
-    const scenarioSteps = spec.noise ? steps.filter((s) => s !== "export") : steps;
-    all.push(...(await runScenario(context, spec, scenarioSteps)));
-  }
+  for (const spec of specs) all.push(...(await runScenario(context, spec, steps)));
 } finally {
   await context.close();
 }
