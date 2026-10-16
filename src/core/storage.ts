@@ -22,3 +22,12 @@ export const formatBytes = (bytes: number) =>
     : bytes >= 1e6
       ? `${(bytes / 1e6).toFixed(1)} MB`
       : `${Math.max(1, Math.round(bytes / 1e3))} KB`;
+
+export type KeepAs = "link" | "copy" | "session";
+
+export function keepPlan(
+  _items: readonly { bytes: number; linkable: boolean }[],
+  _estimate: { usage?: number; quota?: number },
+): { keep: KeepAs[]; copyBytes: number; free: number | null } {
+  throw new Error("Not implemented");
+}
