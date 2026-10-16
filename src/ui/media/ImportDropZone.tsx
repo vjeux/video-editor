@@ -1,6 +1,8 @@
 import * as stylex from "@stylexjs/stylex";
 import { useRef } from "react";
 import { importFiles } from "../../app/assets";
+import { reportError } from "../../app/errors";
+import { pickFiles } from "../../app/source-files";
 import { colors, motion, radii } from "../theme/tokens.stylex";
 import { Icon } from "../controls/Icon";
 import { ACCEPTED_FILES } from "./dnd";
@@ -41,7 +43,11 @@ export function ImportDropZone({ expanded = false }: { expanded?: boolean }) {
     <>
       <button
         type="button"
-        onClick={() => input.current?.click()}
+        onClick={() =>
+          void pickFiles(input.current)
+            .then((files) => files && importFiles(files))
+            .catch(reportError)
+        }
         {...stylex.props(styles.zone, expanded && styles.expanded)}
       >
         <Icon name="upload" size={20} />

@@ -9,6 +9,7 @@ import {
 } from "react";
 import { addAssetToTimeline, importFiles } from "../../app/assets";
 import { isProjectFile, openFiles } from "../../app/project-files";
+import { droppedFiles } from "../../app/source-files";
 import { reportError } from "../../app/errors";
 import { MAX_PX_PER_SECOND, MIN_PX_PER_SECOND } from "../../app/commands";
 import { applyEffect, applyTransition } from "../../app/effects";
@@ -365,9 +366,13 @@ export function Timeline() {
     const assetId = e.dataTransfer.getData(ASSET_MIME);
     if (assetId) addAssetToTimeline(assetId, { trackId: target?.id, start: time });
     else if (e.dataTransfer.files.length) {
-      const files = [...e.dataTransfer.files];
-      if (files.some(isProjectFile)) void openFiles(files).catch(reportError);
-      else void importFiles(files, { trackId: target?.id, start: time });
+      void droppedFiles(e.dataTransfer)
+        .then((files) =>
+          files.some(isProjectFile)
+            ? openFiles(files)
+            : importFiles(files, { trackId: target?.id, start: time }),
+        )
+        .catch(reportError);
     }
   };
 

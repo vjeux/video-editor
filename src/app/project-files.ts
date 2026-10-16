@@ -8,6 +8,7 @@ import { newId } from "./engine";
 import { importEffectFiles, isEffectFile } from "./effects";
 import { keepSourceMedia } from "./media-storage";
 import { pause } from "./playback";
+import { pickFiles } from "./source-files";
 
 export const isProjectFile = (file: File) => /\.cutline$/i.test(file.name);
 
@@ -50,6 +51,12 @@ export async function openProjectFile(file: File) {
   noticeStore
     .getState()
     .push("success", `Opened “${bundle.project.name}”`, "Undo returns to your previous project.");
+}
+
+/** Lets the user pick a project, media or effects, then opens them (Open… and Mod+O). */
+export async function chooseAndOpen(fallback: HTMLInputElement | null) {
+  const files = await pickFiles(fallback);
+  if (files) await openFiles(files);
 }
 
 /** Open a project or import media/effects from the same picker. */

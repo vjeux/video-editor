@@ -21,7 +21,7 @@ import { freezeFrame } from "./assets";
 import { newId } from "./engine";
 import { reportError } from "./errors";
 import { pause, seek, togglePlay } from "./playback";
-import { saveProjectFile } from "./project-files";
+import { chooseAndOpen, saveProjectFile } from "./project-files";
 
 const state = () => editorStore.getState();
 
@@ -182,7 +182,10 @@ export function installShortcuts(onHelp?: () => void): () => void {
     if (key === "Mod+KeyS" || key === "Mod+KeyO") {
       event.preventDefault();
       if (key === "Mod+KeyS") void saveProjectFile().catch(reportError);
-      else document.getElementById("open-project-files")?.click();
+      else {
+        const input = document.getElementById("open-project-files");
+        void chooseAndOpen(input instanceof HTMLInputElement ? input : null).catch(reportError);
+      }
       return;
     }
     if (isEditable(event.target)) return;

@@ -9,7 +9,8 @@ export interface Filmstrip {
 
 /** Runtime-only facts about an imported file; never saved and never undone. */
 export interface AssetRuntime {
-  status: "loading" | "ready" | "missing" | "error";
+  /** `offline`: linked to a file the browser needs permission to read again. */
+  status: "loading" | "ready" | "offline" | "missing" | "error";
   error?: string;
   poster?: ImageBitmap;
   filmstrip?: Filmstrip;

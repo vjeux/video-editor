@@ -1,6 +1,8 @@
 import * as stylex from "@stylexjs/stylex";
 import { useRef } from "react";
 import { importFiles } from "../../app/assets";
+import { reportError } from "../../app/errors";
+import { pickFiles } from "../../app/source-files";
 import { addText } from "../../app/commands";
 import { Button } from "../controls/Button";
 import { Icon } from "../controls/Icon";
@@ -79,7 +81,14 @@ export function EmptyPreview() {
         </p>
       </div>
       <div {...stylex.props(styles.actions)}>
-        <Button variant="primary" onClick={() => input.current?.click()}>
+        <Button
+          variant="primary"
+          onClick={() =>
+            void pickFiles(input.current)
+              .then((files) => files && importFiles(files, { start: 0 }))
+              .catch(reportError)
+          }
+        >
           <Icon name="plus" size={15} />
           Import media
         </Button>

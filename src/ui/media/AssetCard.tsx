@@ -1,6 +1,8 @@
 import * as stylex from "@stylexjs/stylex";
 import { assetMenu, openMenu } from "../../app/menus";
 import { addAssetToTimeline, deleteAsset } from "../../app/assets";
+import { reportError } from "../../app/errors";
+import { reconnectMedia } from "../../app/session";
 import { formatDuration, formatFps } from "../../core/time";
 import type { Asset, AssetKind } from "../../core/types";
 import { useMedia } from "../../store";
@@ -79,6 +81,12 @@ const styles = stylex.create({
     fontFamily: fonts.mono,
     fontSize: 10,
   },
+  reconnect: {
+    borderWidth: 0,
+    color: colors.accent,
+    cursor: "pointer",
+    pointerEvents: "auto",
+  },
   badge: {
     position: "absolute",
     left: 4,
@@ -154,11 +162,12 @@ export function AssetCard({ asset, used }: { asset: Asset; used: boolean }) {
   const peaks = useMedia((s) => s.assets[asset.id]?.peaks);
   const ready = status === "ready";
   const broken = status === "missing" || status === "error";
+  const offline = status === "offline";
 
   return (
     <div
       draggable={ready}
-      title={`${asset.name}${error ? `\n${error}` : ""}\nDouble-click to append to the timeline`}
+      title={`${asset.name}${error ? `\n${error}` : ""}${offline ? "\nThe browser needs your permission to read this file again" : ""}\nDouble-click to append to the timeline`}
       onDragStart={(e) => {
         e.dataTransfer.setData(ASSET_MIME, asset.id);
         e.dataTransfer.effectAllowed = "copy";
@@ -191,6 +200,20 @@ export function AssetCard({ asset, used }: { asset: Asset; used: boolean }) {
           <span {...stylex.props(styles.fps)}>{formatFps(asset.frameRate)} fps</span>
         )}
         {broken && <span {...stylex.props(styles.badge)}>{status}</span>}
+        {offline && (
+          <button
+            type="button"
+            title={`Allow Cutline to read ${asset.name} again`}
+            onClick={(e) => {
+              e.stopPropagation();
+              void reconnectMedia([asset.id]).catch(reportError);
+            }}
+            onDoubleClick={(e) => e.stopPropagation()}
+            {...stylex.props(styles.badge, styles.reconnect)}
+          >
+            Reconnect
+          </button>
+        )}
         <button
           type="button"
           disabled={!ready}

@@ -1,9 +1,9 @@
 import { migrateProject } from "../core/migrate";
-import type { Project } from "../core/types";
+import type { Asset, Project } from "../core/types";
 import {
   deleteMedia,
-  loadMedia,
   loadProject,
+  restoreMedia,
   saveProject,
   storedMediaIds,
 } from "../engine/persistence";
@@ -29,12 +29,35 @@ async function restoreSession() {
   void storedMediaIds().then((ids) => {
     for (const id of ids) if (!referenced.has(id)) void deleteMedia(id);
   });
-  for (const asset of Object.values(saved.assets)) {
-    mediaStore.getState().patch(asset.id, { status: "loading" });
-    void loadMedia(asset.id).then((file) =>
-      file ? openAsset(asset, file) : mediaStore.getState().patch(asset.id, { status: "missing" }),
-    );
+  for (const asset of Object.values(saved.assets)) void reopen(asset, false);
+}
+
+/** Opens an asset's stored source, or marks it offline or missing. */
+async function reopen(asset: Asset, ask: boolean) {
+  mediaStore.getState().patch(asset.id, { status: "loading" });
+  const { patch } = mediaStore.getState();
+  try {
+    const restored = await restoreMedia(asset.id, { ask });
+    if (restored.kind === "file") await openAsset(asset, restored.file);
+    else patch(asset.id, { status: restored.kind === "reconnect" ? "offline" : "missing" });
+  } catch (error) {
+    patch(asset.id, { status: "error", error: (error as Error).message });
+    reportError(error);
   }
+}
+
+/**
+ * Asks the browser again for the linked files it locked after a reload
+ * (one prompt per file, from the click that runs this) and loads them.
+ */
+export async function reconnectMedia(ids?: readonly string[]) {
+  const { project } = editorStore.getState();
+  const { assets } = mediaStore.getState();
+  const offline = Object.values(project.assets).filter(
+    (asset) => assets[asset.id]?.status === "offline" && (!ids || ids.includes(asset.id)),
+  );
+  // Sequential: each permission prompt waits for the user's answer.
+  for (const asset of offline) await reopen(asset, true);
 }
 
 let restored: Promise<void> | null = null;

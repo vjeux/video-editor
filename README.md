@@ -15,9 +15,12 @@ Built on [Mediabunny](https://mediabunny.dev/) + WebCodecs · React 19 · StyleX
 
 - **Everything stays on your device.** Decoding, preview and encoding use
   WebCodecs through Mediabunny. Projects and their media autosave to IndexedDB
-  and reopen on reload. Cutline asks the browser to keep that storage and
-  checks there is room before copying a file in; media that doesn't fit still
-  works until you close the tab, and a notice says it won't survive a reload.
+  and reopen on reload. In Chrome and Edge, files you pick or drop are linked
+  where they are rather than copied, so even a huge file imports instantly; if
+  the browser locks them again after a reload, one **Reconnect** click brings
+  them back. Elsewhere (and for media inside an opened `.cutline`) files are
+  copied in after checking there is room; media that doesn't fit still works
+  until you close the tab, and a notice says it won't survive a reload.
 - **Portable projects.** Use **☰ → Save project** to download a `.cutline` bundle
   with the timeline, custom effects and original media. **Open** restores it or
   imports ordinary media files. The [versioned project format](docs/project-format.md)
@@ -212,11 +215,15 @@ audio length. Raw numbers are in `bench/results/`. What still bounds you:
 - **Exports without a save picker.** Firefox and Safari have no
   `showSaveFilePicker`, so the export is built in memory and then offered as a
   download: it needs about twice the output size in RAM.
-- **Browser storage.** Each imported file, and each file in an opened
-  `.cutline`, is copied into IndexedDB so it survives a reload. The copy needs
-  free quota (Chrome allows up to about 60% of free disk; Firefox and Safari
-  less) and the same disk space again. Files that don't fit still work until
-  the tab closes, and a notice says so.
+- **Copies where files can't be linked.** In Chrome and Edge, files you pick
+  or drop are linked by handle: storing the 1.4 GB file took 14 ms and no
+  storage, against 2.5 s and 1.4 GB more on disk for a copy. Linked files must
+  stay where they are (a moved or deleted file shows as missing), and the
+  browser may ask again for permission after a reload. Firefox and Safari, and
+  the media inside an opened `.cutline`, are copied into IndexedDB instead,
+  which needs free quota (Chrome allows up to about 60% of free disk; Firefox
+  and Safari less) and the same disk space again. Files that don't fit still
+  work until the tab closes, and a notice says so.
 - **Opened projects read from their file.** Media in an opened `.cutline` is
   read straight from that file, so keep it in place while you edit.
 - **What still grows with length** is small: the MP4 sample index of the

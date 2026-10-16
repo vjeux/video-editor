@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { openFiles } from "../../app/project-files";
 import { reportError } from "../../app/errors";
+import { droppedFiles } from "../../app/source-files";
 
 const hasFiles = (e: DragEvent) => e.dataTransfer?.types.includes("Files") ?? false;
 
@@ -27,8 +28,8 @@ export function useWindowFileDrop(): boolean {
       setOver(false);
       if (!hasFiles(e)) return;
       e.preventDefault();
-      const files = [...(e.dataTransfer?.files ?? [])];
-      void openFiles(files).catch(reportError);
+      if (!e.dataTransfer) return;
+      void droppedFiles(e.dataTransfer).then(openFiles).catch(reportError);
     };
     const listeners = { dragenter: enter, dragleave: leave, dragover: over, drop } as const;
     for (const [type, fn] of Object.entries(listeners))
