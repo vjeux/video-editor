@@ -24,6 +24,7 @@ const { values: args } = parseArgs({
     out: { type: "string" },
     headed: { type: "boolean", default: false },
     profile: { type: "string", default: "node_modules/.cache/cutline-bench/profile" },
+    import: { type: "string", default: "link" },
   },
 });
 
@@ -161,7 +162,20 @@ async function runScenario(context, spec, steps) {
   ({ page, cdp } = await openEditor(context));
   if (steps.includes("import")) {
     record(
-      await measured(cdp, page, "import", () => call(page, "importMedia", spec.name, timeout)),
+      await measured(cdp, page, "import", () =>
+        call(page, "importMedia", spec.name, timeout, args.import),
+      ),
+    );
+  }
+  if (!page.isClosed() && steps.includes("reload")) {
+    // Let autosave land, then reopen the tab as a returning user would.
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    record(
+      await measured(cdp, page, "reload", async () => {
+        await page.reload();
+        await page.waitForFunction(() => document.querySelector("#root")?.childElementCount > 0);
+        return call(page, "restored", timeout);
+      }),
     );
   }
   if (!page.isClosed() && steps.includes("play")) {

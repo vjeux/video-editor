@@ -1,0 +1,120 @@
+{
+  "date": "2026-10-16T07:09:09.812Z",
+  "note": "1.4 GB 720p file imported by copy (plain File) and by link (through the editor's picker with an OPFS handle), then the tab reloaded.",
+  "copy": [
+    {
+      "media": "large-720p.mp4",
+      "minutes": 5,
+      "mediaMB": 1433,
+      "step": "import",
+      "survived": true,
+      "ok": true,
+      "error": null,
+      "wallSeconds": 6.163,
+      "peakHeapMB": 38,
+      "peakRendererRssMB": 444,
+      "mode": "copy",
+      "seconds": 5.9885,
+      "storedSeconds": 2.4656999999284746,
+      "storageGrowthMB": 1433,
+      "stored": true
+    },
+    {
+      "media": "large-720p.mp4",
+      "minutes": 5,
+      "mediaMB": 1433,
+      "step": "reload",
+      "survived": true,
+      "ok": true,
+      "error": null,
+      "wallSeconds": 5.325,
+      "peakHeapMB": 34,
+      "peakRendererRssMB": 470,
+      "seconds": 4.829100000023842,
+      "statuses": ["ready"]
+    },
+    {
+      "media": "large-720p.mp4",
+      "minutes": 5,
+      "mediaMB": 1433,
+      "step": "play",
+      "survived": true,
+      "ok": true,
+      "error": null,
+      "wallSeconds": 5.426,
+      "peakHeapMB": 37,
+      "peakRendererRssMB": 457,
+      "audioAfter": 0.3886000000238419,
+      "played": 4.951635666666675,
+      "checkedFrames": 403,
+      "dropouts": 0
+    },
+    {
+      "media": "large-720p.mp4",
+      "minutes": 5,
+      "mediaMB": 1433,
+      "step": "storage",
+      "usage": 3172201599,
+      "quota": 13909619839,
+      "persisted": false
+    }
+  ],
+  "link": [
+    {
+      "media": "large-720p.mp4",
+      "minutes": 5,
+      "mediaMB": 1433,
+      "step": "import",
+      "survived": true,
+      "ok": true,
+      "error": null,
+      "wallSeconds": 5.063,
+      "peakHeapMB": 29,
+      "peakRendererRssMB": 454,
+      "mode": "link",
+      "seconds": 4.939299999952317,
+      "storedSeconds": 0.014,
+      "storageGrowthMB": 0,
+      "stored": true
+    },
+    {
+      "media": "large-720p.mp4",
+      "minutes": 5,
+      "mediaMB": 1433,
+      "step": "reload",
+      "survived": true,
+      "ok": true,
+      "error": null,
+      "wallSeconds": 4.957,
+      "peakHeapMB": 36,
+      "peakRendererRssMB": 527,
+      "seconds": 4.6235,
+      "statuses": ["ready"]
+    },
+    {
+      "media": "large-720p.mp4",
+      "minutes": 5,
+      "mediaMB": 1433,
+      "step": "play",
+      "survived": true,
+      "ok": true,
+      "error": null,
+      "wallSeconds": 5.315,
+      "peakHeapMB": 37,
+      "peakRendererRssMB": 578,
+      "audioAfter": 0.2757999999523163,
+      "played": 4.9666196666666735,
+      "checkedFrames": 412,
+      "dropouts": 0
+    },
+    {
+      "media": "large-720p.mp4",
+      "minutes": 5,
+      "mediaMB": 1433,
+      "step": "storage",
+      "usage": 1669146677,
+      "quota": 12406564917,
+      "persisted": false
+    }
+  ]
+}

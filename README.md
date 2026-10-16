@@ -185,8 +185,10 @@ frames.
 low-resolution videos and a 1.5 GB high-bitrate one in the page (cached in a
 throwaway profile under `node_modules/.cache`), then records peak JS heap,
 peak renderer memory and whether the tab survived for import, playback start,
-export (with the frame and audio counts read back from the file) and
-`.cutline` save/open:
+export (with the frame and audio counts read back from the file),
+`.cutline` save/open and a reload. `--import link` (the default) imports
+through the editor's file picker so files are linked where the browser
+allows it; `--import copy` hands over plain files, which are copied:
 
 ```bash
 vp dev --port 5199

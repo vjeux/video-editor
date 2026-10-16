@@ -173,23 +173,62 @@ export async function resetProject() {
   }));
 }
 
-/** Imports an OPFS file into the bin and places it on the timeline. */
-export async function importMedia(name, timeoutMs) {
+/**
+ * Imports an OPFS file into the bin and places it on the timeline. `link`
+ * goes through the editor's file picker (stubbed with the OPFS handle), so
+ * the file is linked where the editor supports it; `copy` hands over a
+ * plain File, which is copied into IndexedDB.
+ */
+export async function importMedia(name, timeoutMs, mode = "link") {
   const m = await modules();
-  const file = await opfsFile(name);
-  if (!file) throw new Error(`${name} has not been generated`);
+  const handle = await (await opfs()).getFileHandle(name).catch(() => null);
+  if (!handle) throw new Error(`${name} has not been generated`);
+  const sources = await load("/src/app/source-files.ts").catch(() => null);
+  const linking = mode === "link" && sources?.pickFiles;
+  const before = (await navigator.storage.estimate()).usage;
   const started = performance.now();
-  await m.assets.importFiles([new File([file], name, { type: "video/mp4" })]);
-  await assetsSettled(m, timeoutMs);
+  let files;
+  if (linking) {
+    window.showOpenFilePicker = async () => [handle];
+    files = await sources.pickFiles(null);
+  } else {
+    files = [new File([await handle.getFile()], name, { type: "video/mp4" })];
+  }
+  await m.assets.importFiles(files);
   const project = m.store.editorStore.getState().project;
   const asset = Object.values(project.assets).find((a) => a.name === name);
-  m.assets.addAssetToTimeline(asset.id, { start: 0 });
   const stored = await until(
     async () => (await m.persistence.storedMediaIds()).includes(asset.id) || null,
     timeoutMs,
-    "the IndexedDB copy",
+    "the stored copy or link",
   ).catch((error) => error.message);
-  return { seconds: (performance.now() - started) / 1000, stored: stored === true ? true : stored };
+  const storedSeconds = (performance.now() - started) / 1000;
+  const storageGrowthMB = Math.round(
+    ((await navigator.storage.estimate()).usage - before) / 2 ** 20,
+  );
+  await assetsSettled(m, timeoutMs);
+  m.assets.addAssetToTimeline(asset.id, { start: 0 });
+  return {
+    mode: linking ? "link" : "copy",
+    seconds: (performance.now() - started) / 1000,
+    storedSeconds,
+    storageGrowthMB,
+    stored: stored === true ? true : stored,
+  };
+}
+
+/** After a reload: waits for the session to reopen its media from storage. */
+export async function restored(timeoutMs) {
+  const m = await modules();
+  const started = performance.now();
+  await until(
+    () => Object.keys(m.store.editorStore.getState().project.assets).length > 0,
+    timeoutMs,
+    "the saved project",
+  );
+  await assetsSettled(m, timeoutMs);
+  const statuses = Object.values(m.store.mediaStore.getState().assets).map((a) => a.status);
+  return { seconds: (performance.now() - started) / 1000, statuses };
 }
 
 /**
