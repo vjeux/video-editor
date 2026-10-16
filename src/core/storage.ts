@@ -23,11 +23,20 @@ export const formatBytes = (bytes: number) =>
       ? `${(bytes / 1e6).toFixed(1)} MB`
       : `${Math.max(1, Math.round(bytes / 1e3))} KB`;
 
+/** How a source file is kept: by reference, as a copy, or only until the tab closes. */
 export type KeepAs = "link" | "copy" | "session";
 
+/**
+ * Links every file the browser can reopen from a handle (no quota and no
+ * second copy, whatever the size), and copies the rest into storage when
+ * they fit together: all of them or, if not, none.
+ */
 export function keepPlan(
-  _items: readonly { bytes: number; linkable: boolean }[],
-  _estimate: { usage?: number; quota?: number },
+  items: readonly { bytes: number; linkable: boolean }[],
+  estimate: { usage?: number; quota?: number },
 ): { keep: KeepAs[]; copyBytes: number; free: number | null } {
-  throw new Error("Not implemented");
+  const copyBytes = items.reduce((sum, i) => sum + (i.linkable ? 0 : i.bytes), 0);
+  const { fits, free } = storageFit(estimate, copyBytes);
+  const keep = items.map((i): KeepAs => (i.linkable ? "link" : fits ? "copy" : "session"));
+  return { keep, copyBytes, free };
 }
